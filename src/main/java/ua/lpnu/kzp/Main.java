@@ -62,7 +62,7 @@ public final class Main{
            // 1. Формуємо єдиний текст звіту (DRY)
             // %d - ціле число, %.2f - дробове з двома нулями, %n - перехід на новий рядок
             String report = String.format(Locale.ROOT,
-                    "\n--- ЗВІТ ---%n" +
+                    "%n--- ЗВІТ ---%n" +
                     "Коректних записів: %d%n" +
                     "Загальний виторг: %.2f%n" +
                     "Найдовший абонемент (місяців): %d%n",
@@ -80,10 +80,11 @@ public final class Main{
             // 3. Записуємо готовий звіт у файл
             Path outputPath = Path.of("out", "report.txt");
             
-            // Створюємо папку out, якщо її ще не існує
-            Files.createDirectories(outputPath.getParent());
-            
-            // Аналог f.write(report) з явним вказуванням кодування
+          // Безпечно перевіряємо, чи є в шляху батьківська папка
+            Path parent = outputPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Files.writeString(outputPath, report, StandardCharsets.UTF_8);
             System.out.println("\nЗвіт успішно збережено у файл: " + outputPath);
 

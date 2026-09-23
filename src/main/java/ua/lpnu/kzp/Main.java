@@ -7,33 +7,49 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
-public final class Main{
+/** 
+ * Головний клас програми для обробки бази тренажерного залу. 
+ */
+public final class Main {
 
-    private Main(){
-
+    private Main() {
     }
 
-    public static void main(String[] args){
+    /**
+     * Точка входу до програми.
+     *
+     * @param args аргументи командного рядка
+     */
+    public static void main(String[] args) {
         System.out.println("Старт обробки бази тренажерного залу!");
         Path filePath = Path.of("data", "input.csv");
-
-        try{
+        
+        // Перевірка версії (Вимога Рівня 3)
+        if (args.length > 0 && "--version".equals(args[0])) {
+            System.out.println("Gym Trainer App v1.0.0");
+            return; 
+        }
+        
+        try {
             List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
-            System.out.println("Успішон прочитано рядків: " + lines.size());
+            System.out.println("Успішно прочитано рядків: " + lines.size());
 
             int validCount = 0;
             double totalRevenue = 0.0;
             int totalVisits = 0;
             int maxMonths = 0;
             
-            for (String line : lines) {
+            // Використовуємо індексований цикл, щоб знати номер рядка
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
                 String[] fields = line.split(";", -1);
-                if (fields.length != 5){
-                    System.out.println("Пропущено рядок (неправильна кількість полів): " + line);
+                
+                if (fields.length != 5) {
+                    System.out.println("Пропущено рядок " + (i + 1) + " (неправильна кількість полів): " + line);
                     continue;
                 } 
 
-               try {
+                try {
                     String client = fields[0];
                     String plan = fields[1];
 
@@ -41,26 +57,24 @@ public final class Main{
                     int visits = Integer.parseInt(fields[3]);
                     double price = Double.parseDouble(fields[4]);
 
-                    if (months < 0 || price < 0){
-                        System.out.println("Не може бути від'ємним.");
+                    if (months < 0 || visits < 0 || price < 0) {
+                        System.out.println("Рядок " + (i + 1) + " пропущено: значення не може бути від'ємним.");
                         continue;
-                    } else { 
+                    } 
+                    
                     validCount++;
                     totalRevenue += price;
                     totalVisits += visits;
-                    }
                     
-                    if (months > maxMonths){
+                    if (months > maxMonths) {
                         maxMonths = months;
                     }
 
                 } catch (NumberFormatException e) {
-                    System.out.println("Рядок " + (line + 1) + " пропущено: нечислове значення");
+                    System.out.println("Рядок " + (i + 1) + " пропущено: нечислове значення");
                 }
             }
 
-           // 1. Формуємо єдиний текст звіту (DRY)
-            // %d - ціле число, %.2f - дробове з двома нулями, %n - перехід на новий рядок
             String report = String.format(Locale.ROOT,
                     "%n--- ЗВІТ ---%n" +
                     "Коректних записів: %d%n" +
@@ -70,17 +84,12 @@ public final class Main{
             
             if (validCount > 0) {
                 double averageVisits = (double) totalVisits / validCount;
-                // Доклеюємо середнє значення до нашого звіту (+= працює як і в Python)
                 report += String.format(Locale.ROOT, "Середня кількість відвідувань: %.2f%n", averageVisits);
             }
 
-            // 2. Виводимо готовий звіт у консоль
             System.out.print(report);
 
-            // 3. Записуємо готовий звіт у файл
             Path outputPath = Path.of("out", "report.txt");
-            
-          // Безпечно перевіряємо, чи є в шляху батьківська папка
             Path parent = outputPath.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);

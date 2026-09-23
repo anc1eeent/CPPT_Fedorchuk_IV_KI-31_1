@@ -14,17 +14,28 @@
 ```csv
 Іван Федорчук;Безліміт;12;45;1500.50
 Петро Коваль;Ранковий;3;10;500.00
-Олена Петрівна;Разовий;помилка;1;150.00```
+Олена Петрівна;Разовий;помилка;1;150.00
+```
 
 ### Збірка та запуск
 Проєкт використовує Maven Wrapper, тому вам не потрібно встановлювати Maven глобально на ваш комп'ютер. 
-# На Windows:
+
+**На Windows:**
+```bash
 .\mvnw.cmd clean verify package
+```
 
-# На Linux / macOS:
+**На Linux / macOS:**
+```bash
 ./mvnw clean verify package
+```
 
-# Запуск:
+**Запуск:**
+```bash
 java -jar target/maven-actions-hello-0.1.0.jar --input data/input.csv
-# Перевірка версії:
+```
+
+**Перевірка версії:**
+```bash
 java -jar target/maven-actions-hello-0.1.0.jar --version
+```

@@ -68,14 +68,17 @@ public final class Main {
                 report += String.format(Locale.ROOT, "Середня кількість відвідувань: %.2f%n", averageVisits);
             }
             System.out.println(report);
+            if (!errors.isEmpty()) {
+                System.out.println("Помилок: " + errors.size());
+                errors.forEach(System.out::println);
+            }
 
             Path outputPath = Path.of("out", "report.txt");
             Path parent = outputPath.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            // ... (твій старий код запису у файл)
-
+            Files.writeString(outputPath, report, StandardCharsets.UTF_8);
         } catch (IOException e) {
             System.out.println("Сталася помилка при читанні файлу: " + e.getMessage());
         }

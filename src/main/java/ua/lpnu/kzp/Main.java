@@ -47,8 +47,6 @@ public final class Main {
             double totalVisitCost = 0.0;
             double maxVisitCost = 0.0;
             
-            // Зверни увагу: тут немає if (m instanceof MonthlyMembership)
-            // JVM сама вирішує, яку формулу викликати!
             for (Membership m : memberships) {
                 double cost = m.visitCost();
                 totalVisitCost += cost;
@@ -88,7 +86,7 @@ public final class Main {
 
     /**
      * Фабричний метод, який замінює старий Membership.fromCsv.
-     * Працює як роутер: аналізує рядок і створює правильний підтип.
+     * аналізує рядок і створює правильний підтип.
      */
     private static Membership parseCsv(String line) {
         String[] fields = line.split(";", -1);

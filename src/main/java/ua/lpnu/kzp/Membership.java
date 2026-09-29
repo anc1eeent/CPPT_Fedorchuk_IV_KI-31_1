@@ -1,18 +1,29 @@
 package ua.lpnu.kzp;
 
 import java.util.Objects;
-import java.util.Locale;
 
 public abstract class Membership {
     private final String client;
     private final MembershipKind kind;
 
-    protected Membership(String client, MembershipKind kind){
-        if (client == null || client.isBlank()){
-            throw new IllegalArgumentException("Name of client is not defined");
-            }
+    /** Створює абонемент із перевіреними спільними полями. */
+    protected Membership(String client, MembershipKind kind) {
+        // Спочатку валідуємо, потім передаємо в приватний конструктор[cite: 1]
+        this(validateClient(client), Objects.requireNonNull(kind, "Категорія абонемента не може бути null"), true);
+    }
+
+    /* Присвоює вже перевірений стан елемента. Конструктор без винятків. */
+    private Membership(String client, MembershipKind kind, boolean validated) {
         this.client = client;
-        this.kind = Objects.requireNonNull(kind, "Kind cannot be null");
+        this.kind = kind;
+    }
+
+    /* Статичний метод для перевірки імені до створення об'єкта. */
+    private static String validateClient(String client) {
+        if (client == null || client.isBlank()) {
+            throw new IllegalArgumentException("Ім'я клієнта не може бути порожнім.");
+        }
+        return client;
     }
 
     public final String getClient() {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -12,19 +13,12 @@ import java.util.Locale;
  */
 public final class Main {
 
-    private Main() {
-    }
+    private Main() {}
 
-    /**
-     * Точка входу до програми.
-     *
-     * @param args аргументи командного рядка
-     */
     public static void main(String[] args) {
         System.out.println("Старт обробки бази тренажерного залу!");
         Path filePath = Path.of("data", "input.csv");
         
-        // Перевірка версії (Вимога Рівня 3)
         if (args.length > 0 && "--version".equals(args[0])) {
             System.out.println("Gym Trainer App v1.0.0");
             return; 
@@ -34,60 +28,50 @@ public final class Main {
             List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
             System.out.println("Успішно прочитано рядків: " + lines.size());
 
-            int validCount = 0;
-            double totalRevenue = 0.0;
-            int totalVisits = 0;
-            int maxMonths = 0;
+            // 1. Створюємо списки для чистих даних та помилок
+            List<Membership> memberships = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
             
-            // Використовуємо індексований цикл, щоб знати номер рядка
             for (int i = 0; i < lines.size(); i++) {
                 String line = lines.get(i);
-                String[] fields = line.split(";", -1);
-                
-                if (fields.length != 5) {
-                    System.out.println("Пропущено рядок " + (i + 1) + " (неправильна кількість полів): " + line);
-                    continue;
-                } 
-
-                try {
-                    String client = fields[0];
-                    String plan = fields[1];
-
-                    int months = Integer.parseInt(fields[2]);
-                    int visits = Integer.parseInt(fields[3]);
-                    double price = Double.parseDouble(fields[4]);
-
-                    if (months < 0 || visits < 0 || price < 0) {
-                        System.out.println("Рядок " + (i + 1) + " пропущено: значення не може бути від'ємним.");
-                        continue;
-                    } 
-                    
-                    validCount++;
-                    totalRevenue += price;
-                    totalVisits += visits;
-                    
-                    if (months > maxMonths) {
-                        maxMonths = months;
-                    }
-
-                } catch (NumberFormatException e) {
-                    System.out.println("Рядок " + (i + 1) + " пропущено: нечислове значення");
+                try{
+                   memberships.add(Membership.fromCsv(line));
+                } catch (IllegalArgumentException e) {
+                    errors.add("Пропущено рядок: " + (i + 1) + ": " + e.getMessage());
                 }
             }
 
+            double totalRevenue = 0.0;
+            int totalVisits = 0;
+            int maxMonths = 0;
+           
+            for(Membership m : memberships){
+                totalRevenue = totalRevenue + m.getPrice();
+                totalVisits = totalVisits + m.getVisits();
+                maxMonths = Math.max(maxMonths, m.getMonths());
+            }
+
+            // ФАЗА 3: Пакування у record
+            double averageVisits = memberships.isEmpty() ? 0.0 : (double) totalVisits / memberships.size();
+            
+            MembershipSummary summary = new MembershipSummary(memberships.size(), averageVisits, totalRevenue, maxMonths);
+            
+            // ФАЗА 4: Формування звіту
             String report = String.format(Locale.ROOT,
                     "%n--- ЗВІТ ---%n" +
                     "Коректних записів: %d%n" +
                     "Загальний виторг: %.2f%n" +
                     "Найдовший абонемент (місяців): %d%n",
-                    validCount, totalRevenue, maxMonths);
-            
-            if (validCount > 0) {
-                double averageVisits = (double) totalVisits / validCount;
+                    summary.validCount(), summary.totalRevenue(), summary.maxMonths());
+
+            if (summary.validCount() > 0) {
                 report += String.format(Locale.ROOT, "Середня кількість відвідувань: %.2f%n", averageVisits);
             }
-
-            System.out.print(report);
+            System.out.println(report);
+            if (!errors.isEmpty()) {
+                System.out.println("Помилок: " + errors.size());
+                errors.forEach(System.out::println);
+            }
 
             Path outputPath = Path.of("out", "report.txt");
             Path parent = outputPath.getParent();
@@ -95,8 +79,6 @@ public final class Main {
                 Files.createDirectories(parent);
             }
             Files.writeString(outputPath, report, StandardCharsets.UTF_8);
-            System.out.println("\nЗвіт успішно збережено у файл: " + outputPath);
-
         } catch (IOException e) {
             System.out.println("Сталася помилка при читанні файлу: " + e.getMessage());
         }

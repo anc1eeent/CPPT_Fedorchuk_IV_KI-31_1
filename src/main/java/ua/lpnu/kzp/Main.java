@@ -63,17 +63,27 @@ public final class Main {
                 maxVisitCost = Math.max(maxVisitCost, cost);
             }
 
-            // Демонстрація роботи equals/hashCode через HashSet
+            // Lab 3: equals/hashCode keep one entry per subtype and client.
             Set<Membership> uniqueMemberships = new HashSet<>(memberships);
+            // Lab 1 indicators of variant 20.
+            MembershipSummary summary = MembershipSummary.from(memberships);
 
-            // ФАЗА ФОРМУВАННЯ ЗВІТУ
             String report = String.format(Locale.ROOT,
-                    "%n--- ЗВІТ ---%n" +
-                    "Всього оброблено записів: %d%n" +
-                    "Унікальних клієнтів (завдяки HashSet): %d%n" +
-                    "Найвища вартість одного візиту: %.2f грн%n" +
-                    "Сумарна вартість усіх візитів (поліморфно): %.2f грн%n",
-                    memberships.size(), uniqueMemberships.size(), maxVisitCost, totalVisitCost);
+                    "%n--- REPORT ---%n"
+                            + "Valid records: %d%n"
+                            + "Total revenue: %.2f UAH%n"
+                            + "Longest membership: %d months%n"
+                            + "Average visits: %.2f%n"
+                            + "Unique clients: %d%n"
+                            + "Highest visit cost: %.2f UAH%n"
+                            + "Total visit cost: %.2f UAH%n",
+                    summary.validCount(),
+                    summary.totalRevenue(),
+                    summary.maxMonths(),
+                    summary.averageVisits(),
+                    uniqueMemberships.size(),
+                    maxVisitCost,
+                    totalVisitCost);
 
             System.out.println(report);
             
@@ -93,4 +103,4 @@ public final class Main {
             System.out.println("Сталася помилка при читанні файлу: " + e.getMessage());
         }
     }
-}
+}

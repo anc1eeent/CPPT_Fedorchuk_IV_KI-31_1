@@ -113,11 +113,9 @@ public final class Main {
 
             // Логіка маршрутизації:
             if ("Monthly".equalsIgnoreCase(plan) || months == 1) {
-                return new MonthlyMembership(client, price, visits);
+                return new MonthlyMembership(client, plan, months, visits, price);
             } else {
-                // Якщо річний, то вираховуємо середню кількість візитів на місяць
-                int visitsPerMonth = Math.max(1, visits / months);
-                return new AnnualMembership(client, price, months, visitsPerMonth);
+                return new AnnualMembership(client, plan, months, visits, price);
             }
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Помилка парсингу числових значень.");

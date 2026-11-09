@@ -1,0 +1,21 @@
+# Turns a requirement into a task with a checkable definition of done.
+name: Feature
+description: Plan a functional change
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What should appear in the program?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we check that the task is done?
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

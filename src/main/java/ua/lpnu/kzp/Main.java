@@ -47,7 +47,7 @@ public final class Main {
                 String line = lines.get(i);
                 try {
                     // Використовуємо наш новий фабричний метод
-                    memberships.add(parseCsv(line));
+                    memberships.add(Membership.fromCsv(line));
                 } catch (IllegalArgumentException e) {
                     errors.add("Пропущено рядок " + (i + 1) + ": " + e.getMessage());
                 }
@@ -91,34 +91,6 @@ public final class Main {
             
         } catch (IOException e) {
             System.out.println("Сталася помилка при читанні файлу: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Фабричний метод, який замінює старий Membership.fromCsv.
-     * аналізує рядок і створює правильний підтип.
-     */
-    private static Membership parseCsv(String line) {
-        String[] fields = line.split(";", -1);
-        if (fields.length != 5) {
-            throw new IllegalArgumentException("Некоректна кількість елементів (очікується 5).");
-        }
-        
-        try {
-            String client = fields[0];
-            String plan = fields[1];
-            int months = Integer.parseInt(fields[2]);
-            int visits = Integer.parseInt(fields[3]);
-            double price = Double.parseDouble(fields[4]);
-
-            // Логіка маршрутизації:
-            if ("Monthly".equalsIgnoreCase(plan) || months == 1) {
-                return new MonthlyMembership(client, plan, months, visits, price);
-            } else {
-                return new AnnualMembership(client, plan, months, visits, price);
-            }
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Помилка парсингу числових значень.");
         }
     }
 }

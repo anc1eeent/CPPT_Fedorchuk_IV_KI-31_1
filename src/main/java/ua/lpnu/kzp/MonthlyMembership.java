@@ -1,24 +1,33 @@
 package ua.lpnu.kzp;
 
+/**
+ * Membership for a single month.
+ *
+ * <p>A visit costs the whole price divided by the number of visits.</p>
+ */
 public final class MonthlyMembership extends Membership {
-    private final double monthlyPrice;
-    private final int visits;
 
-    public MonthlyMembership(String client, double montlyPrice, int visits){
-        super(client, MembershipKind.MONTHLY);
-        
-        if (montlyPrice < 0 || !Double.isFinite(montlyPrice)){
-            throw new IllegalArgumentException("Price cannot be negative.");
-        }
-        if (visits <= 0){
-            throw new IllegalArgumentException("Visits cannot be less than 1.");
-        }
-        this.monthlyPrice = montlyPrice;
-        this.visits = visits;
+    /**
+     * Creates a monthly membership.
+     *
+     * @param client client full name, must not be blank
+     * @param plan   tariff name, must not be blank
+     * @param months duration in months, at least 1
+     * @param visits number of visits, at least 1
+     * @param price  total price paid, finite and not negative
+     * @throws IllegalArgumentException if a shared field is invalid
+     */
+    public MonthlyMembership(String client, String plan, int months, int visits, double price) {
+        super(client, plan, months, visits, price, MembershipKind.MONTHLY);
     }
 
-    @Override 
-    public double visitCost(){
-        return monthlyPrice / visits;
+    /**
+     * Calculates the cost of one visit as {@code price / visits}.
+     *
+     * @return cost of one visit
+     */
+    @Override
+    public double visitCost() {
+        return getPrice() / getVisits();
     }
 }

@@ -1,0 +1,10 @@
+# Lab reports
+
+`REPORT.md` in the repository root always holds the report of the latest lab.
+When the next lab starts, the previous report moves here.
+
+| Lab | Report | Code state |
+|---|---|---|
+| 1 | [lab-01.md](lab-01.md) | [v1.0.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.0.0) |
+| 2 | [lab-02.md](lab-02.md) | [v1.1.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.1.0) |
+| 3 | [REPORT.md](../../REPORT.md) | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0) |

@@ -1,35 +1,127 @@
-# CPPT_Fedorchuk_IV_KI-31_1
-Лабораторні роботи з предмету "Кросплатформні засоби програмування"
+# Cross-Platform Programming Tools — Java labs
 
-## Лабораторна робота №3: Спадкування, інтерфейси й поліморфізм у Java-проєкті (Варіант 20)
+[![Java CI](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/actions/workflows/ci.yml/badge.svg?branch=main-java)](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/actions/workflows/ci.yml)
 
-### Призначення
-Програма читає записи про клієнтів тренажерного залу з файлу `data/input.csv`. У версії 1.1.0 архітектура була переведена на поліморфну модель. Спільні властивості винесено до базового абстрактного класу `Membership`, а відмінна бізнес-логіка реалізована у підтипах `MonthlyMembership` та `AnnualMembership`[cite: 1]. Розрахунок вартості відвідувань відбувається поліморфно, без використання розгалужень `if` або `switch` за типом об'єкта[cite: 1]. Логічна унікальність клієнтів гарантується контрактом `equals/hashCode` та фільтрацією через структуру `HashSet`[cite: 1].
+Laboratory works for the course "Cross-Platform Programming Tools",
+Lviv Polytechnic National University. Author: Fedorchuk I. V., group KI-31.
 
-### Формат вхідних даних
-Один запис розміщується у рядку, поля розділяються крапкою з комою (`;`). Файл має бути у кодуванні UTF-8. 
-**Формат запису:** `Клієнт;Тариф;Місяці;Відвідування;Ціна`
+**Variant 20 — gym memberships.** Every lab improves the same console program:
+it reads memberships from a CSV file, skips invalid rows with a reason,
+calculates the report indicators and writes the report to the console and to a file.
 
-**Приклад `data/input.csv`:**
-```csv
-Іван Федорчук;Monthly;1;15;1500.50
-Петро Коваль;Annual;12;120;12000.00
-Олена Петрівна;Monthly;1;10;1000.00
+## Labs
 
-### Збірка та запуск
-Проєкт використовує Maven Wrapper, тому вам не потрібно встановлювати Maven глобально на ваш комп'ютер. 
+| Lab | Topic | Code | Pull request |
+|---|---|---|---|
+| 1 | Java project setup and basic data processing | [v1.0.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.0.0) | [#5](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/5) |
+| 2 | Classes, records and encapsulation | [v1.1.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.1.0) | [#6](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/6) |
+| 3 | Inheritance, interfaces and polymorphism | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0) | [#12](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/12) |
+| — | Cleanup of labs 1–3 | v1.2.1 | this branch |
+| 4 | Stream API | planned | — |
 
-**На Windows:**
-```bash
-.\mvnw.cmd clean verify package
+Lab reports are in [`REPORT.md`](REPORT.md) (latest lab) and [`docs/reports`](docs/reports) (earlier labs).
+
+## Input format
+
+UTF-8 text, one membership per line, fields separated by `;`:
+
+```text
+client;plan;months;visits;price
 ```
 
-**На Linux / macOS:**
-```bash
-./mvnw clean verify package
+| Field | Type | Rule |
+|---|---|---|
+| `client` | text | not blank |
+| `plan` | text | not blank, tariff name |
+| `months` | whole number | from 1; at most 12 for an annual membership |
+| `visits` | whole number | from 1 |
+| `price` | decimal number | not negative |
+
+A row with the plan `Monthly` or a one-month term becomes a monthly membership,
+any other row becomes an annual one. An invalid row is skipped with its line number and reason;
+the other rows are still processed.
+
+Example ([`data/input.csv`](data/input.csv) also contains one row for every kind of invalid data):
+
+```text
+Іван Федорчук;Безліміт;12;45;1500.50
+Петро Коваль;Ранковий;3;10;500.00
+Марія Іванівна;Вечірній;6;20;900.00
 ```
 
-**Запуск:**
-```bash
-java -jar target/gym-membership-1.2.1.jar
+## Build
+
+Requirements: JDK 21. Maven is not needed — the Maven Wrapper downloads it.
+
+```powershell
+# Windows
+.\mvnw.cmd clean verify
 ```
+
+```bash
+# Linux / macOS
+./mvnw clean verify
+```
+
+`verify` compiles the code, runs the JUnit 5 tests, builds the executable JAR
+`target/gym-membership-1.2.1.jar` and checks the code with SpotBugs.
+GitHub Actions runs the same command on Ubuntu, Windows and macOS and publishes the JAR as an artifact.
+
+## Run
+
+```bash
+java -jar target/gym-membership-1.2.1.jar [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--input <path>` | CSV file to read (default `data/input.csv`) |
+| `--output <path>` | report file to write (default `out/report.txt`) |
+| `--version` | print the version and exit |
+| `--help` | print the usage and exit |
+
+Exit codes: `0` success, `1` a file cannot be read or written, `2` invalid options.
+
+Example output for the sample data:
+
+```text
+Skipped line 3: months is not a whole number: 'помилка'
+Skipped line 5: plan must not be blank
+Skipped line 6: expected 5 fields, got 1
+Skipped line 7: visits must be at least 1, got -5
+Skipped line 8: expected 5 fields, got 4
+--- REPORT ---
+Valid records: 3
+Total revenue: 2900.50 UAH
+Longest membership: 12 months
+Average visits: 25.00
+Unique clients: 3
+Highest visit cost: 55.56 UAH
+Total visit cost: 147.24 UAH
+Report saved to out/report.txt
+```
+
+The program writes UTF-8. If Ukrainian letters look broken in a Windows console,
+switch the console to UTF-8 once with `chcp 65001`.
+
+## Project structure
+
+```text
+src/main/java/ua/lpnu/kzp/
+├── Main.java                 entry point: reads, reports, writes
+├── CommandLine.java          command-line options
+├── Membership.java           base type: shared fields, validation, fromCsv
+├── MonthlyMembership.java    subtype with its own visit cost rule
+├── AnnualMembership.java     subtype with its own visit cost rule
+├── MembershipKind.java       membership category
+└── MembershipSummary.java    record with the Lab 1 indicators
+src/test/java/ua/lpnu/kzp/    JUnit 5 tests
+data/input.csv                sample data
+ai/                           AI assistant roles
+docs/                         lab reports and images
+```
+
+## AI usage
+
+AI assistants were used as consultants. The roles are described in [`ai/`](ai);
+what was accepted, rejected and written by the author is recorded in each lab report.

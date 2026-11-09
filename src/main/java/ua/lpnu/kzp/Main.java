@@ -17,15 +17,25 @@ public final class Main {
 
     private Main() {}
 
+    /**
+     * Returns the application version from the JAR manifest.
+     *
+     * @return the version, or "dev" when the program runs outside the JAR
+     */
+    static String appVersion() {
+        String version = Main.class.getPackage().getImplementationVersion();
+        return version != null ? version : "dev";
+    }
+
     public static void main(String[] args) {
+        if (args.length > 0 && "--version".equals(args[0])) {
+            System.out.println("Gym Membership Report " + appVersion());
+            return;
+        }
+
         System.out.println("Старт обробки бази тренажерного залу!");
         Path filePath = Path.of("data", "input.csv");
-        
-        if (args.length > 0 && "--version".equals(args[0])) {
-            System.out.println("Gym Trainer App v1.1.0 (Polymorphic Edition)");
-            return; 
-        }
-        
+
         try {
             List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
             System.out.println("Успішно прочитано рядків: " + lines.size());

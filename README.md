@@ -31,5 +31,5 @@
 
 **Запуск:**
 ```bash
-java -jar target/maven-actions-hello-0.1.0.jar --input data/input.csv
+java -jar target/gym-membership-1.2.1.jar
 ```

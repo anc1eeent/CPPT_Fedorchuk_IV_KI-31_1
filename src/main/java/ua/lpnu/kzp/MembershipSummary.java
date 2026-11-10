@@ -33,7 +33,7 @@ public record MembershipSummary(
 
     /**
      * Calculates the indicators of variant 20 for the given memberships.
-     * Each indicator is calculated with a separete stream pipeline.
+     * Each indicator is calculated with a separate stream pipeline.
      *
      * @param memberships valid memberships, may be empty
      * @return summary; every value is zero for an empty list

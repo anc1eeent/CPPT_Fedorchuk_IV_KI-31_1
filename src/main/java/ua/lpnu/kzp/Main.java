@@ -4,15 +4,12 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Member;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * Command-line entry point: reads gym memberships from CSV and prints the report of variant 20.
@@ -135,13 +132,12 @@ public final class Main {
                 .mapToDouble(Membership::visitCost)
                 .sum(); 
 
-
         double maxVisitCost = memberships.stream()
                 .mapToDouble(Membership::visitCost)
                 .max()
                 .orElse(0.0);
         
-        // equals/hashCode keep one entry per subtype and client.
+        // distinct() uses equals/hashCode: one entry per subtype and client.
         long uniqueClients = memberships.stream()
                 .distinct()
                 .count();

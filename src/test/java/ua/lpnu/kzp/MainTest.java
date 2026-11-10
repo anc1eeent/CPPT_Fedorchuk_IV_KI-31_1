@@ -57,10 +57,10 @@ class MainTest {
         Path input = folder.resolve("input.csv");
         Path output = folder.resolve("nested").resolve("report.txt");
         Files.write(input, List.of(
-                "Іван Федорчук;Безліміт;12;45;1500.50",
-                "Петро Коваль;Ранковий;3;10;500.00",
-                "Олена Петрівна;Разовий;помилка;1;150.00",
-                "Марія Іванівна;Вечірній;6;20;900.00"), StandardCharsets.UTF_8);
+                "Іван Федорчук;Безліміт;12;45;1500.50;2026-01-15",
+                "Петро Коваль;Ранковий;3;10;500.00;2026-08-01",
+                "Олена Петрівна;Разовий;помилка;1;150.00;2026-09-01",
+                "Марія Іванівна;Вечірній;6;20;900.00;2026-06-10"), StandardCharsets.UTF_8);
 
         int exitCode = Main.run(
                 new String[] {"--input", input.toString(), "--output", output.toString()}, out, err);

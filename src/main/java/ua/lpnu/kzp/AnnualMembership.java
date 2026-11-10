@@ -1,5 +1,7 @@
 package ua.lpnu.kzp;
 
+import java.time.LocalDate;
+
 /**
  * Membership for several months, up to a year.
  *
@@ -14,15 +16,17 @@ public final class AnnualMembership extends Membership {
     /**
      * Creates an annual membership.
      *
-     * @param client client full name, must not be blank
-     * @param plan   tariff name, must not be blank
-     * @param months duration in months, from 1 to {@value #MAX_MONTHS}
-     * @param visits number of visits, at least 1
-     * @param price  total price paid, finite and not negative
+     * @param client    client full name, must not be blank
+     * @param plan      tariff name, must not be blank
+     * @param months    duration in months, from 1 to {@value #MAX_MONTHS}
+     * @param visits    number of visits, at least 1
+     * @param price     total price paid, finite and not negative
+     * @param startDate first day of the membership, must not be null
      * @throws IllegalArgumentException if a field is invalid
      */
-    public AnnualMembership(String client, String plan, int months, int visits, double price) {
-        super(client, plan, months, visits, price, MembershipKind.ANNUAL);
+    public AnnualMembership(String client, String plan, int months, int visits, double price,
+            LocalDate startDate) {
+        super(client, plan, months, visits, price, startDate, MembershipKind.ANNUAL);
         // Throwing after super() is safe here: the class is final, so no subclass
         // can get hold of a half-built object.
         if (months > MAX_MONTHS) {

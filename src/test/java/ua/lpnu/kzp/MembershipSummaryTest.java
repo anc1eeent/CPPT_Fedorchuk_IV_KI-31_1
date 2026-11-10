@@ -54,9 +54,9 @@ class MembershipSummaryTest {
     @Test
     void fromMatchesLab1Report() {
         List<Membership> memberships = List.of(
-                Membership.fromCsv("Іван Федорчук;Безліміт;12;45;1500.50"),
-                Membership.fromCsv("Петро Коваль;Ранковий;3;10;500.00"),
-                Membership.fromCsv("Марія Іванівна;Вечірній;6;20;900.00"));
+                Membership.fromCsv("Іван Федорчук;Безліміт;12;45;1500.50;2026-01-15"),
+                Membership.fromCsv("Петро Коваль;Ранковий;3;10;500.00;2026-08-01"),
+                Membership.fromCsv("Марія Іванівна;Вечірній;6;20;900.00;2026-06-10"));
 
         assertEquals(new MembershipSummary(3, 25.0, 2900.50, 12), MembershipSummary.from(memberships));
     }
@@ -65,9 +65,9 @@ class MembershipSummaryTest {
     @Test
     void fromKeepsFractionalAverage() {
         List<Membership> memberships = List.of(
-                Membership.fromCsv("A;Monthly;1;25;100"),
-                Membership.fromCsv("B;Monthly;1;25;100"),
-                Membership.fromCsv("C;Monthly;1;26;100"));
+                Membership.fromCsv("A;Monthly;1;25;100;2026-09-01"),
+                Membership.fromCsv("B;Monthly;1;25;100;2026-09-01"),
+                Membership.fromCsv("C;Monthly;1;26;100;2026-09-01"));
 
         assertEquals(76.0 / 3, MembershipSummary.from(memberships).averageVisits(), 1e-9);
     }

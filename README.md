@@ -26,7 +26,7 @@ Lab reports are in [`REPORT.md`](REPORT.md) (latest lab) and [`docs/reports`](do
 UTF-8 text, one membership per line, fields separated by `;`:
 
 ```text
-client;plan;months;visits;price
+client;plan;months;visits;price;startDate
 ```
 
 | Field | Type | Rule |
@@ -36,6 +36,7 @@ client;plan;months;visits;price
 | `months` | whole number | from 1; at most 12 for an annual membership |
 | `visits` | whole number | from 1 |
 | `price` | decimal number | not negative |
+| `startDate` | date `yyyy-mm-dd` | first day of the membership; it ends `months` later |
 
 A row with the plan `Monthly` or a one-month term becomes a monthly membership,
 any other row becomes an annual one. An invalid row is skipped with its line number and reason;
@@ -44,9 +45,9 @@ the other rows are still processed.
 Example ([`data/input.csv`](data/input.csv) also contains one row for every kind of invalid data):
 
 ```text
-Іван Федорчук;Безліміт;12;45;1500.50
-Петро Коваль;Ранковий;3;10;500.00
-Марія Іванівна;Вечірній;6;20;900.00
+Іван Федорчук;Безліміт;12;45;1500.50;2026-01-15
+Петро Коваль;Ранковий;3;10;500.00;2026-08-01
+Олег Савчук;Monthly;1;12;650.00;2026-10-20
 ```
 
 ## Build
@@ -87,17 +88,18 @@ Example output for the sample data:
 ```text
 Skipped line 3: months is not a whole number: 'помилка'
 Skipped line 5: plan must not be blank
-Skipped line 6: expected 5 fields, got 1
+Skipped line 6: expected 6 fields, got 1
 Skipped line 7: visits must be at least 1, got -5
-Skipped line 8: expected 5 fields, got 4
+Skipped line 8: expected 6 fields, got 5
+Skipped line 11: startDate is not a date (yyyy-mm-dd): '2026-13-01'
 --- REPORT ---
-Valid records: 3
-Total revenue: 2900.50 UAH
+Valid records: 7
+Total revenue: 5450.50 UAH
 Longest membership: 12 months
-Average visits: 25.00
-Unique clients: 3
-Highest visit cost: 55.56 UAH
-Total visit cost: 147.24 UAH
+Average visits: 17.57
+Unique clients: 6
+Highest visit cost: 75.00 UAH
+Total visit cost: 373.63 UAH
 Report saved to out/report.txt
 ```
 

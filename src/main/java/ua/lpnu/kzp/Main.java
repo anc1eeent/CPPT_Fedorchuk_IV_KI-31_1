@@ -4,6 +4,7 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Member;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -130,15 +131,20 @@ public final class Main {
         MembershipSummary summary = MembershipSummary.from(memberships);
 
         // Lab 3 indicators: visitCost() is called through the base type, each subtype applies its own rule.
-        double totalVisitCost = 0.0;
-        double maxVisitCost = 0.0;
-        for (Membership membership : memberships) {
-            double cost = membership.visitCost();
-            totalVisitCost += cost;
-            maxVisitCost = Math.max(maxVisitCost, cost);
-        }
+        double totalVisitCost = memberships.stream()
+                .mapToDouble(Membership::visitCost)
+                .sum(); 
+
+
+        double maxVisitCost = memberships.stream()
+                .mapToDouble(Membership::visitCost)
+                .max()
+                .orElse(0.0);
+        
         // equals/hashCode keep one entry per subtype and client.
-        Set<Membership> uniqueMemberships = new HashSet<>(memberships);
+        long uniqueClients = memberships.stream()
+                .distinct()
+                .count();
 
         return String.format(Locale.ROOT,
                 "--- REPORT ---%n"
@@ -153,7 +159,7 @@ public final class Main {
                 summary.totalRevenue(),
                 summary.maxMonths(),
                 summary.averageVisits(),
-                uniqueMemberships.size(),
+                uniqueClients,
                 maxVisitCost,
                 totalVisitCost);
     }

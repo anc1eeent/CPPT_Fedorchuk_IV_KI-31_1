@@ -81,8 +81,9 @@ public final class Main {
         }
 
         try {
-            List<Membership> memberships = readMemberships(options.input(), err);
-            String report = formatReport(memberships);
+            Repository<Membership> memberships = new Repository<>();
+            memberships.addAll(readMemberships(options.input(), err));
+            String report = formatReport(memberships.all());
             out.print(report);
             writeReport(options.output(), report);
             out.println("Report saved to " + options.output());

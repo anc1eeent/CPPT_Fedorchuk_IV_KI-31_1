@@ -7,9 +7,11 @@ import java.util.Objects;
  * Report indicators of variant 20 calculated over all valid memberships.
  *
  * @param validCount    number of valid records, not negative
- * @param averageVisits average number of visits per membership, finite and not negative
+ * @param averageVisits average number of visits per membership, finite and not
+ *                      negative
  * @param totalRevenue  sum of all membership prices, finite and not negative
- * @param maxMonths     duration of the longest membership in months, not negative
+ * @param maxMonths     duration of the longest membership in months, not
+ *                      negative
  */
 public record MembershipSummary(
         int validCount,
@@ -31,6 +33,7 @@ public record MembershipSummary(
 
     /**
      * Calculates the indicators of variant 20 for the given memberships.
+     * Each indicator is calculated with a separate stream pipeline.
      *
      * @param memberships valid memberships, may be empty
      * @return summary; every value is zero for an empty list
@@ -38,18 +41,22 @@ public record MembershipSummary(
      */
     public static MembershipSummary from(List<Membership> memberships) {
         Objects.requireNonNull(memberships, "memberships must not be null");
-        double totalRevenue = 0.0;
-        int totalVisits = 0;
-        int maxMonths = 0;
-        for (Membership membership : memberships) {
-            totalRevenue += membership.getPrice();
-            totalVisits += membership.getVisits();
-            maxMonths = Math.max(maxMonths, membership.getMonths());
-        }
-        int count = memberships.size();
-        // Without the cast int / int would drop the fraction: 76 / 3 == 25, not 25.33.
-        double averageVisits = count == 0 ? 0.0 : (double) totalVisits / count;
-        return new MembershipSummary(count, averageVisits, totalRevenue, maxMonths);
+
+        double totalRevenue = memberships.stream()
+                .mapToDouble(Membership::getPrice)
+                .sum();
+
+        int maxMonths = memberships.stream()
+                .mapToInt(Membership::getMonths)
+                .max()
+                .orElse(0);
+
+        double averageVisits = memberships.stream()
+                .mapToInt(Membership::getVisits)
+                .average()
+                .orElse(0.0);
+
+        return new MembershipSummary(memberships.size(), averageVisits, totalRevenue, maxMonths);
     }
 
     /* Rejects negative counts. */

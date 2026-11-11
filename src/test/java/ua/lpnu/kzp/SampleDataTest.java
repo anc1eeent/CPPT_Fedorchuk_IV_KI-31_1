@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 /** Checks the sample file {@code data/input.csv} that is shipped with the project. */
 class SampleDataTest {
 
-    /* The sample has three valid rows and one row for every kind of invalid data. */
+    /* The sample has seven valid rows and one row for every kind of invalid data. */
     @Test
     void sampleContainsEveryInvalidRowType() throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -21,23 +21,24 @@ class SampleDataTest {
 
         List<Membership> memberships = Main.readMemberships(CommandLine.DEFAULT_INPUT, warnings);
 
-        assertEquals(3, memberships.size());
+        assertEquals(7, memberships.size());
         assertEquals(List.of(
                 "Skipped line 3: months is not a whole number: 'помилка'",
                 "Skipped line 5: plan must not be blank",
-                "Skipped line 6: expected 5 fields, got 1",
+                "Skipped line 6: expected 6 fields, got 1",
                 "Skipped line 7: visits must be at least 1, got -5",
-                "Skipped line 8: expected 5 fields, got 4"),
+                "Skipped line 8: expected 6 fields, got 5",
+                "Skipped line 11: startDate is not a date (yyyy-mm-dd): '2026-13-01'"),
                 buffer.toString(StandardCharsets.UTF_8).lines().toList());
     }
 
-    /* Invalid rows do not change the indicators of the valid ones. */
+    /* Indicators of the valid rows: 123 visits over 7 memberships, revenue 5450.50, longest 12 months. */
     @Test
-    void sampleGivesLab1Indicators() throws IOException {
+    void sampleGivesExpectedIndicators() throws IOException {
         PrintStream ignored = new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
 
         List<Membership> memberships = Main.readMemberships(CommandLine.DEFAULT_INPUT, ignored);
 
-        assertEquals(new MembershipSummary(3, 25.0, 2900.50, 12), MembershipSummary.from(memberships));
+        assertEquals(new MembershipSummary(7, 123.0 / 7, 5450.50, 12), MembershipSummary.from(memberships));
     }
 }

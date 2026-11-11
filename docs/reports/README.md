@@ -7,4 +7,5 @@ When the next lab starts, the previous report moves here.
 |---|---|---|
 | 1 | [lab-01.md](lab-01.md) | [v1.0.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.0.0) |
 | 2 | [lab-02.md](lab-02.md) | [v1.1.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.1.0) |
-| 3 | [REPORT.md](../../REPORT.md) | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0) |
+| 3 | [lab-03.md](lab-03.md) | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0), completed in [v1.2.1](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.1) |
+| 4 | [REPORT.md](../../REPORT.md) | v1.3.0 |

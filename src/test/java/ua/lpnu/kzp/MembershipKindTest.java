@@ -3,6 +3,7 @@ package ua.lpnu.kzp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -35,8 +36,8 @@ class MembershipKindTest {
     @Test
     void subtypesReportTheirKind() {
         assertEquals(MembershipKind.MONTHLY,
-                new MonthlyMembership("Іван", "Monthly", 1, 10, 100.0).getKind());
+                new MonthlyMembership("Іван", "Monthly", 1, 10, 100.0, LocalDate.of(2026, 9, 1)).getKind());
         assertEquals(MembershipKind.ANNUAL,
-                new AnnualMembership("Іван", "Annual", 12, 10, 100.0).getKind());
+                new AnnualMembership("Іван", "Annual", 12, 10, 100.0, LocalDate.of(2026, 9, 1)).getKind());
     }
 }

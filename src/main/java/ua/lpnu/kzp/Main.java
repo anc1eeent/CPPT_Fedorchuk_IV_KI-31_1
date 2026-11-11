@@ -7,14 +7,16 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * Command-line entry point: reads gym memberships from CSV and prints the report of variant 20.
+ * Command-line entry point: reads gym memberships from CSV and prints the report of variant 20:
+ * the indicators of labs 1–3 and the results of the Lab 4 stream queries.
  *
  * <p>Exit codes: {@value #EXIT_OK} on success, {@value #EXIT_IO_ERROR} if a file cannot be read
  * or written, {@value #EXIT_USAGE} for invalid options.</p>
@@ -29,6 +31,9 @@ public final class Main {
 
     /** Exit code for an unknown option or an option without its value. */
     static final int EXIT_USAGE = 2;
+
+    /** Client looked up by the search query of the report. */
+    static final String SEARCH_CLIENT = "Анна Литвин";
 
     private Main() {
     }
@@ -120,7 +125,7 @@ public final class Main {
     }
 
     /**
-     * Builds the report text with the indicators of Lab 1 and Lab 3.
+     * Builds the report text: the indicators of Lab 1 and Lab 3, then the stream queries of Lab 4.
      *
      * @param memberships valid memberships
      * @return report text with platform line separators
@@ -130,15 +135,19 @@ public final class Main {
         MembershipSummary summary = MembershipSummary.from(memberships);
 
         // Lab 3 indicators: visitCost() is called through the base type, each subtype applies its own rule.
-        double totalVisitCost = 0.0;
-        double maxVisitCost = 0.0;
-        for (Membership membership : memberships) {
-            double cost = membership.visitCost();
-            totalVisitCost += cost;
-            maxVisitCost = Math.max(maxVisitCost, cost);
-        }
-        // equals/hashCode keep one entry per subtype and client.
-        Set<Membership> uniqueMemberships = new HashSet<>(memberships);
+        double totalVisitCost = memberships.stream()
+                .mapToDouble(Membership::visitCost)
+                .sum(); 
+
+        double maxVisitCost = memberships.stream()
+                .mapToDouble(Membership::visitCost)
+                .max()
+                .orElse(0.0);
+        
+        // distinct() uses equals/hashCode: one entry per subtype and client.
+        long uniqueClients = memberships.stream()
+                .distinct()
+                .count();
 
         return String.format(Locale.ROOT,
                 "--- REPORT ---%n"
@@ -153,9 +162,64 @@ public final class Main {
                 summary.totalRevenue(),
                 summary.maxMonths(),
                 summary.averageVisits(),
-                uniqueMemberships.size(),
+                uniqueClients,
                 maxVisitCost,
-                totalVisitCost);
+                totalVisitCost)
+                + formatQueries(memberships);
+    }
+
+    /**
+     * Builds the report section with the results of the Lab 4 stream queries.
+     *
+     * @param memberships valid memberships
+     * @return report section with platform line separators
+     */
+    static String formatQueries(List<Membership> memberships) {
+        LocalDate date = MembershipReport.REPORT_DATE;
+
+        List<Membership> active = MembershipReport.activeMemberships(memberships, date);
+        String activeNames = active.stream()
+                .map(Membership::getClient)
+                .collect(Collectors.joining(", "));
+
+        String clients = String.join(", ", MembershipReport.clientNames(memberships));
+
+        String visitsByKind = MembershipReport.visitsByKind(memberships).entrySet().stream()
+                .map(entry -> entry.getKey().label() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
+
+        // For an empty list min and max are Integer.MAX_VALUE and MIN_VALUE, so they are not shown.
+        IntSummaryStatistics stats = MembershipReport.visitStatistics(memberships);
+        String statistics = stats.getCount() == 0
+                ? "no data"
+                : String.format(Locale.ROOT, "count=%d, sum=%d, min=%d, max=%d, average=%.2f",
+                        stats.getCount(), stats.getSum(), stats.getMin(), stats.getMax(), stats.getAverage());
+
+        String top = MembershipReport.topByVisits(memberships, MembershipReport.TOP_SIZE).stream()
+                .map(membership -> membership.getClient() + " (" + membership.getVisits() + ")")
+                .collect(Collectors.joining(", "));
+
+        // Optional.map runs only when a membership was found; otherwise orElse gives the text.
+        String search = MembershipReport.findByClient(memberships, SEARCH_CLIENT)
+                .map(membership -> String.format(Locale.ROOT, "found, %d visits, %s to %s",
+                        membership.getVisits(), membership.getStartDate(), membership.getEndDate()))
+                .orElse("not found");
+
+        return String.format(Locale.ROOT,
+                "%n--- STREAM QUERIES (report date %s) ---%n"
+                        + "Active memberships: %d (%s)%n"
+                        + "Clients: %s%n"
+                        + "Visits by kind: %s%n"
+                        + "Visit statistics: %s%n"
+                        + "Top %d by visits: %s%n"
+                        + "Search \"%s\": %s%n",
+                date, active.size(), orNone(activeNames), orNone(clients), orNone(visitsByKind), statistics,
+                MembershipReport.TOP_SIZE, orNone(top), SEARCH_CLIENT, search);
+    }
+
+    /* Shows "none" instead of an empty list in the report. */
+    private static String orNone(String joined) {
+        return joined.isEmpty() ? "none" : joined;
     }
 
     /**

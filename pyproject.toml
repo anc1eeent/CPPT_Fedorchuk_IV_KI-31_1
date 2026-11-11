@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gym-membership-py"
+version = "1.0.0"
+description = "Gym membership data processing, variant 20 of the Cross-Platform Programming Tools course"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Fedorchuk I. V." }]
+
+[project.optional-dependencies]
+# Development tools only; the installed package has no runtime dependencies.
+dev = [
+  "pytest==9.2.0",
+  "ruff==0.17.4",
+  "build==1.6.1",
+]
+
+[project.scripts]
+gym-membership = "gym_membership.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv-*", "build", "dist"]

@@ -1,0 +1,9 @@
+# Store text files with LF in the repository; Git converts them on checkout.
+* text=auto
+
+# Shell scripts must keep LF on every system.
+*.sh text eol=lf
+
+# Binary files are never converted.
+*.png binary
+*.whl binary

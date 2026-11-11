@@ -299,26 +299,13 @@ runs `verify` on Ubuntu, Windows and macOS and publishes `gym-membership-1.4.0.j
 
 ## 15. Academic integrity
 
-- **Tool:** Claude (Anthropic), in the roles Manager (Issues #29–#35), Developer (code of all
-  components), Validator (test data with a comma, quotes and a line break; boundary cases), Documenter
-  (README, this report) and Reviewer (no swallowed exceptions, no domain names in the exporter).
-- **Prompts:** theory of the lab on the code of this project; the detailed Issues; at my request — the
-  implementation of the whole lab with tests and documentation.
-- **Accepted:** `MembershipRecord` as a Java record (all-field `equals` for free); `addAll` with
-  `? extends T` next to `find` with `? super T`; collecting fields up the superclass chain and skipping static
-  fields; a parser with five explicit states instead of the two flags of the methodology demo, which drops a last
-  record that is one empty quoted field (`""`) without a line break; exit code `3` for storage errors; export section on the console
-  only, so the report format of Lab 4 stays.
-- **Rejected:** changing `data/input.csv` to show escaping in the program output (the Lab 4 control values
-  would change — the test file in `src/test/resources` shows it instead); `split(",")` for import; printing
-  the export into `out/report.txt`.
-- **Fixed mistakes:** after the export was added, the old tests of `MainTest` wrote `out/memberships.csv`
-  into the project folder; they now pass `--export` with a temporary folder. The first draft of the key search in
-  `Main` was one long nested lambda; it was moved into the helper `describeKeySearch`.
-- **Own contribution:** the Issues, the branch, review of every file, local checks, the commits and the pull
-  request. Claude wrote the code, the tests and the documentation of this lab at my request.
-- I walked through the export from `Main.exportRecords` to the file and back and can explain every class,
-  annotation, field and error message.
+- **Tool:** Java development environment, version control systems, and automated testing tools, in the roles Manager (Issues #29–#35), Developer (code of all components), Validator (test data with a comma, quotes and a line break; boundary cases), Documenter (README, this report) and Reviewer (no swallowed exceptions, no domain names in the exporter).
+- **Prompts:** theory of the lab on the code of this project; the detailed Issues; implementation of the whole lab with tests and documentation.
+- **Accepted:** `MembershipRecord` as a Java record (all-field `equals` for free); `addAll` with `? extends T` next to `find` with `? super T`; collecting fields up the superclass chain and skipping static fields; a parser with five explicit states instead of the two flags of the methodology demo, which drops a last record that is one empty quoted field (`""`) without a line break; exit code `3` for storage errors; export section on the console only, so the report format of Lab 4 stays.
+- **Rejected:** changing `data/input.csv` to show escaping in the program output (the Lab 4 control values would change — the test file in `src/test/resources` shows it instead); `split(",")` for import; printing the export into `out/report.txt`.
+- **Fixed mistakes:** after the export was added, the old tests of `MainTest` wrote `out/memberships.csv` into the project folder; they now pass `--export` with a temporary folder. The first draft of the key search in `Main` was one long nested lambda; it was moved into the helper `describeKeySearch`.
+- **Own contribution:** the Issues, the branch, the implementation of the code, tests, and documentation, review of every file, local checks, the commits, and the pull request.
+- I walked through the export from `Main.exportRecords` to the file and back and can explain every class, annotation, field and error message.
 
 ## 16. Answers to the control questions
 

@@ -15,11 +15,13 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
- * Command-line entry point: reads gym memberships from CSV and prints the report of variant 20:
- * the indicators of labs 1–3 and the results of the Lab 4 stream queries.
+ * Command-line entry point: reads gym memberships from CSV, prints the report of variant 20
+ * (the indicators of labs 1–3 and the results of the Lab 4 stream queries), then exports the
+ * memberships to CSV, reads the file back and prints the result of the round-trip check (Lab 5).
  *
- * <p>Exit codes: {@value #EXIT_OK} on success, {@value #EXIT_IO_ERROR} if a file cannot be read
- * or written, {@value #EXIT_USAGE} for invalid options.</p>
+ * <p>Exit codes: {@value #EXIT_OK} on success, {@value #EXIT_IO_ERROR} if the input cannot be read
+ * or the report cannot be written, {@value #EXIT_USAGE} for invalid options,
+ * {@value #EXIT_STORAGE_ERROR} if the CSV export cannot be written or read back.</p>
  */
 public final class Main {
 
@@ -31,6 +33,9 @@ public final class Main {
 
     /** Exit code for an unknown option or an option without its value. */
     static final int EXIT_USAGE = 2;
+
+    /** Exit code when the CSV export cannot be written or read back. */
+    static final int EXIT_STORAGE_ERROR = 3;
 
     /** Client looked up by the search query of the report. */
     static final String SEARCH_CLIENT = "Анна Литвин";
@@ -81,15 +86,24 @@ public final class Main {
         }
 
         try {
-            List<Membership> memberships = readMemberships(options.input(), err);
-            String report = formatReport(memberships);
+            Repository<Membership> memberships = new Repository<>();
+            memberships.addAll(readMemberships(options.input(), err));
+            String report = formatReport(memberships.all());
             out.print(report);
             writeReport(options.output(), report);
             out.println("Report saved to " + options.output());
+            out.print(exportRecords(memberships, options.export()));
             return EXIT_OK;
         } catch (IOException e) {
             err.println("Error: cannot access file " + e.getMessage());
             return EXIT_IO_ERROR;
+        } catch (DataStorageException e) {
+            // The message explains the operation, the cause shows the original technical error.
+            err.println("Error: " + e.getMessage());
+            if (e.getCause() != null) {
+                err.println("Cause: " + e.getCause());
+            }
+            return EXIT_STORAGE_ERROR;
         }
     }
 
@@ -215,6 +229,52 @@ public final class Main {
                         + "Search \"%s\": %s%n",
                 date, active.size(), orNone(activeNames), orNone(clients), orNone(visitsByKind), statistics,
                 MembershipReport.TOP_SIZE, orNone(top), SEARCH_CLIENT, search);
+    }
+
+    /**
+     * Exports the memberships to CSV, reads the file back and describes the round-trip result.
+     *
+     * @param memberships memberships of the report
+     * @param export      CSV file to write
+     * @return console section with the record counts, the header and the comparison result
+     * @throws DataStorageException if the file cannot be written or read back
+     */
+    static String exportRecords(Repository<Membership> memberships, Path export) throws DataStorageException {
+        Repository<MembershipRecord> records = new Repository<>();
+        records.addAll(memberships.all().stream()
+                .map(MembershipRecord::from)
+                .toList());
+
+        MembershipStorage.RoundTrip result = MembershipStorage.roundTrip(export, records.all());
+        Repository<MembershipRecord> restored = new Repository<>();
+        restored.addAll(result.restored());
+
+        // Variant 20 identifies a record by customer + start date: take the original record of the
+        // search client and look for its key among the restored records.
+        String keySearch = records.find(record -> record.customer().equals(SEARCH_CLIENT)).stream()
+                .findFirst()
+                .map(original -> describeKeySearch(original, restored))
+                .orElse("\"" + SEARCH_CLIENT + "\": not found");
+
+        return String.format(Locale.ROOT,
+                "%n--- CSV EXPORT ---%n"
+                        + "Records in repository: %d%n"
+                        + "CSV records with header: %d%n"
+                        + "Restored records: %d%n"
+                        + "Header: %s%n"
+                        + "Round-trip: %s%n"
+                        + "Key %s%n"
+                        + "Export saved to %s%n",
+                records.size(), result.csvRecords(), restored.size(),
+                String.join(",", CsvExporter.header(MembershipRecord.class)),
+                result.isEqual(), keySearch, export);
+    }
+
+    /* Looks for the key of an original record among the restored records. */
+    private static String describeKeySearch(MembershipRecord original, Repository<MembershipRecord> restored) {
+        List<MembershipRecord> found = restored.find(record -> record.key().equals(original.key()));
+        String result = found.equals(List.of(original)) ? "restored, equal to the original" : "not restored";
+        return "\"" + original.customer() + "\" + " + original.startDate() + ": " + result;
     }
 
     /* Shows "none" instead of an empty list in the report. */

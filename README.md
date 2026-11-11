@@ -7,8 +7,9 @@ Lviv Polytechnic National University. Author: Fedorchuk I. V., group KI-31.
 
 **Variant 20 — gym memberships.** Every lab improves the same console program:
 it reads memberships from a CSV file, skips invalid rows with a reason,
-calculates the report indicators with the Stream API and writes the report
-to the console and to a file.
+calculates the report indicators with the Stream API, writes the report
+to the console and to a file, and exports the memberships to a CSV file
+that is read back and compared with the original data.
 
 ## Labs
 
@@ -18,8 +19,8 @@ to the console and to a file.
 | 2 | Classes, records and encapsulation | [v1.1.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.1.0) | [#6](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/6) |
 | 3 | Inheritance, interfaces and polymorphism | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0) | [#12](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/12) |
 | — | Cleanup of labs 1–3 | [v1.2.1](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.1) | [#21](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/21) |
-| 4 | Stream API | v1.3.0 | this branch |
-| 5 | Generic repository, annotations, reflection, CSV export | planned | — |
+| 4 | Stream API | [v1.3.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.3.0) | [#28](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/28) |
+| 5 | Generic repository, annotations, reflection, CSV export | v1.4.0 | this branch |
 
 Lab reports are in [`REPORT.md`](REPORT.md) (latest lab) and [`docs/reports`](docs/reports) (earlier labs).
 
@@ -67,23 +68,25 @@ Requirements: JDK 21. Maven is not needed — the Maven Wrapper downloads it.
 ```
 
 `verify` compiles the code, runs the JUnit 5 tests, builds the executable JAR
-`target/gym-membership-1.3.0.jar` and checks the code with SpotBugs.
+`target/gym-membership-1.4.0.jar` and checks the code with SpotBugs.
 GitHub Actions runs the same command on Ubuntu, Windows and macOS and publishes the JAR as an artifact.
 
 ## Run
 
 ```bash
-java -jar target/gym-membership-1.3.0.jar [options]
+java -jar target/gym-membership-1.4.0.jar [options]
 ```
 
 | Option | Meaning |
 |---|---|
 | `--input <path>` | CSV file to read (default `data/input.csv`) |
 | `--output <path>` | report file to write (default `out/report.txt`) |
+| `--export <path>` | CSV file to export the records to (default `out/memberships.csv`) |
 | `--version` | print the version and exit |
 | `--help` | print the usage and exit |
 
-Exit codes: `0` success, `1` a file cannot be read or written, `2` invalid options.
+Exit codes: `0` success, `1` the input cannot be read or the report cannot be written, `2` invalid options,
+`3` the CSV export cannot be written or read back.
 
 Example output for the sample data:
 
@@ -111,6 +114,15 @@ Visit statistics: count=7, sum=123, min=6, max=45, average=17.57
 Top 5 by visits: Іван Федорчук (45), Марія Іванівна (20), Марія Іванівна (18), Анна Литвин (12), Олег Савчук (12)
 Search "Анна Литвин": found, 12 visits, 2026-10-05 to 2026-11-05
 Report saved to out/report.txt
+
+--- CSV EXPORT ---
+Records in repository: 7
+CSV records with header: 8
+Restored records: 7
+Header: клієнт,кінець,тип,початок,відвідування
+Round-trip: true
+Key "Анна Литвин" + 2026-10-05: restored, equal to the original
+Export saved to out/memberships.csv
 ```
 
 The program writes UTF-8. If Ukrainian letters look broken in a Windows console,
@@ -139,6 +151,52 @@ Stream queries of variant 20 (class `MembershipReport`). A membership is active 
 | Top 5 by visits | `sorted` + `limit` | most visits first; equal visits by client name |
 | Search by client | `filter` + `findFirst` | `Optional` — first membership of the client or nothing |
 
+## CSV export
+
+The valid memberships are kept in a generic `Repository<Membership>`. For the export each one becomes a
+flat `MembershipRecord` — the record of variant 20 — stored in a `Repository<MembershipRecord>`.
+
+| Part | Role |
+|---|---|
+| `Repository<T>` | type-safe storage: `add`, `addAll(Collection<? extends T>)`, `all()` returns an unmodifiable snapshot, `find(Predicate<? super T>)` |
+| `@CsvColumn` | `@Retention(RUNTIME)`, `@Target(FIELD)`; holds the column name of a field |
+| `MembershipRecord` | `customer`, `kind`, `startDate`, `endDate`, `visits`, each marked with `@CsvColumn`; key `customer + startDate` |
+| `CsvExporter` | universal: finds the annotated fields by reflection, orders them by field name, escapes the values, writes UTF-8 |
+| `CsvParser` | state machine over the whole document: quotes, commas and line breaks inside quotes, `\n` and `\r\n` |
+| `MembershipStorage` | `save`, `load` (checks the header, restores records), `roundTrip` |
+| `DataStorageException` | checked exception; the message names the file and record, the original error is the cause |
+
+The exporter does not know the gym classes: it works with any class whose fields carry `@CsvColumn`.
+The columns follow the sorted Java field names (`customer`, `endDate`, `kind`, `startDate`, `visits`),
+the header text comes from the annotations:
+
+```text
+клієнт,кінець,тип,початок,відвідування
+Анна Литвин,2026-11-05,MONTHLY,2026-10-05,12
+"Коваль, Петро ""Ранковий""
+корпоративний клієнт",2026-11-01,ANNUAL,2026-08-01,10
+```
+
+A value with a comma, a double quote or a line break is enclosed in double quotes and its inner quotes are
+doubled; the second record above is one CSV record on two physical lines. The file is UTF-8 and every record
+ends with the line separator of the operating system; the parser accepts both `\n` and `\r\n`.
+
+**Round-trip:** the program writes the records, reads the file back and compares the two lists with `equals`;
+the record of Анна Литвин is then found among the restored records by its key.
+
+| Error | Example message | Cause |
+|---|---|---|
+| wrong field count | `expected 5 fields, got 4` | — |
+| bad number | `field 'відвідування' is not a whole number: 'дванадцять'` | `NumberFormatException` |
+| unknown kind | `field 'тип' is not one of [MONTHLY, ANNUAL]: 'WEEKLY'` | `IllegalArgumentException` |
+| bad date | `field 'початок' is not a date (yyyy-mm-dd): '05.10.2026'` | `DateTimeParseException` |
+| broken quotes | `line 2: quote is not closed` | — |
+| other columns | `unexpected header in …` | — |
+| file | `cannot write CSV file out/memberships.csv` | `IOException` |
+| reflection | `class … has no fields marked with @CsvColumn` | — |
+
+An empty file and a file with only the header are valid and give no records.
+
 ## Project structure
 
 ```text
@@ -150,8 +208,16 @@ src/main/java/ua/lpnu/kzp/
 ├── AnnualMembership.java     subtype with its own visit cost rule
 ├── MembershipKind.java       membership category
 ├── MembershipSummary.java    record with the Lab 1 indicators
-└── MembershipReport.java     Stream API queries of Lab 4
+├── MembershipReport.java     Stream API queries of Lab 4
+├── Repository.java           generic in-memory storage
+├── DataStorageException.java checked storage exception with a cause
+├── CsvColumn.java            annotation with the CSV column name
+├── MembershipRecord.java     flat record of variant 20 for CSV
+├── CsvExporter.java          reflective CSV exporter for any class
+├── CsvParser.java            CSV document parser
+└── MembershipStorage.java    save, load and round-trip of the records
 src/test/java/ua/lpnu/kzp/    JUnit 5 tests
+src/test/resources/csv/       CSV test files: valid data, a broken row, an empty file
 data/input.csv                sample data
 ai/                           AI assistant roles
 docs/                         lab reports and images

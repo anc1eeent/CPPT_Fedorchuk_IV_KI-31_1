@@ -70,8 +70,26 @@ class MainTest {
         assertTrue(report.contains("Valid records: 3"), report);
         assertTrue(report.contains("Total revenue: 2900.50 UAH"), report);
         assertTrue(report.contains("Total visit cost: 147.24 UAH"), report);
+        assertTrue(report.contains("--- STREAM QUERIES (report date 2026-11-01) ---"), report);
+        assertTrue(report.contains("Visits by kind: Annual=75"), report);
         assertTrue(output().startsWith(report), output());
         assertTrue(errors().contains("Skipped line 3: months is not a whole number: 'помилка'"), errors());
+    }
+
+    /* An empty input file gives a zero report and "none" instead of empty lists. */
+    @Test
+    void emptyInputGivesEmptyReport(@TempDir Path folder) throws IOException {
+        Path input = folder.resolve("empty.csv");
+        Files.writeString(input, "", StandardCharsets.UTF_8);
+
+        int exitCode = Main.run(new String[] {"--input", input.toString(),
+            "--output", folder.resolve("report.txt").toString()}, out, err);
+
+        assertEquals(Main.EXIT_OK, exitCode);
+        assertTrue(output().contains("Valid records: 0"), output());
+        assertTrue(output().contains("Active memberships: 0 (none)"), output());
+        assertTrue(output().contains("Visit statistics: no data"), output());
+        assertTrue(output().contains("Search \"Анна Литвин\": not found"), output());
     }
 
     /* A missing input file gives an error message and exit code 1 instead of a crash. */

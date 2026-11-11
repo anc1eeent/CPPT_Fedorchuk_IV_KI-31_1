@@ -19,17 +19,20 @@ class CommandLineTest {
 
         assertEquals(CommandLine.DEFAULT_INPUT, options.input());
         assertEquals(CommandLine.DEFAULT_OUTPUT, options.output());
+        assertEquals(CommandLine.DEFAULT_EXPORT, options.export());
         assertFalse(options.help());
         assertFalse(options.version());
     }
 
-    /* --input and --output replace the defaults in any order. */
+    /* --input, --output and --export replace the defaults in any order. */
     @Test
-    void readsInputAndOutputPaths() {
-        CommandLine options = CommandLine.parse("--output", "result.txt", "--input", "members.csv");
+    void readsPaths() {
+        CommandLine options = CommandLine.parse(
+                "--export", "records.csv", "--output", "result.txt", "--input", "members.csv");
 
         assertEquals(Path.of("members.csv"), options.input());
         assertEquals(Path.of("result.txt"), options.output());
+        assertEquals(Path.of("records.csv"), options.export());
     }
 
     /* --help, -h and --version are flags without values. */
@@ -55,5 +58,6 @@ class CommandLineTest {
         assertThrows(IllegalArgumentException.class, () -> CommandLine.parse("--input"));
         assertThrows(IllegalArgumentException.class, () -> CommandLine.parse("--input", "--output", "x"));
         assertThrows(IllegalArgumentException.class, () -> CommandLine.parse("--output", " "));
+        assertThrows(IllegalArgumentException.class, () -> CommandLine.parse("--export"));
     }
 }

@@ -1,0 +1,59 @@
+name: Python CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.11']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install the project with development tools
+        run: python -m pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        run: python -m ruff check .
+
+      - name: Check formatting with ruff
+        run: python -m ruff format --check .
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Build wheel
+        run: python -m build --wheel
+
+      - name: Install the built wheel
+        run: python -c "from pathlib import Path; import subprocess, sys; wheel = next(Path('dist').glob('*.whl')); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', str(wheel)])"
+
+      - name: Run the installed CLI
+        run: |
+          python -m gym_membership.cli --version
+          gym-membership --version
+
+      - name: Upload wheel
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}-${{ github.run_number }}
+          path: dist/*.whl
+          if-no-files-found: error

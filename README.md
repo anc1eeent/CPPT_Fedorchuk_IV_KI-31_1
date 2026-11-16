@@ -17,9 +17,10 @@ and writes a stable text report.
 |---|---|---|---|
 | 0 | Project infrastructure: pyproject.toml, pytest, ruff, wheel, CLI, CI | [py-v1.0.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/py-v1.0.0) | [#43](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/43) |
 | 6 | Data processing: CSV, collections, comprehensions, functions | [py-v1.1.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/py-v1.1.0) | [#50](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/50) |
-| 7 | Object model: classes, properties, dataclasses, subtypes, protocol | py-v1.2.0 | this branch |
+| 7 | Object model: classes, properties, dataclasses, subtypes, protocol | [py-v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/py-v1.2.0) | [#57](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/57) |
 
 The report of the latest lab is in [`REPORT.md`](REPORT.md).
+The overview of the whole course (Java and Python) is in the [`main`](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/main) branch.
 
 ## Input format
 

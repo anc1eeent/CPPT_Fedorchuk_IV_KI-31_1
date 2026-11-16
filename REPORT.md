@@ -9,7 +9,7 @@
 | Author | Fedorchuk I. V., group KI-31 |
 | Development OS | Windows 11, Python 3.13.15 |
 | CI | GitHub Actions: Ubuntu, Windows, macOS, Python 3.11 |
-| Version | `1.2.0`, tag `py-v1.2.0`, branch `lab-07-python` |
+| Version | `1.2.0`, tag `py-v1.2.0`, branch `lab-07-python`, pull request [#57](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/57) |
 
 Requirements of variant 20 and where they are implemented:
 

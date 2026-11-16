@@ -16,6 +16,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.11']
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -47,8 +49,8 @@ jobs:
 
       - name: Run the installed CLI
         run: |
-          python -m gym_membership.cli --version
           gym-membership --version
+          gym-membership data/input.csv reports/summary.txt
 
       - name: Upload wheel
         if: ${{ success() }}

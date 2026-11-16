@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gym-membership-py"
-version = "1.0.0"
+version = "1.1.0"
 description = "Gym membership data processing, variant 20 of the Cross-Platform Programming Tools course"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,6 +37,9 @@ extend-exclude = [".venv-*", "build", "dist"]
 # E/W: style errors, F: pyflakes (unused names, undefined names), I: import order,
 # UP: modern Python syntax, B: likely bugs, SIM: simpler equivalent code.
 select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["gym_membership"]
 
 [tool.ruff.format]
 quote-style = "double"

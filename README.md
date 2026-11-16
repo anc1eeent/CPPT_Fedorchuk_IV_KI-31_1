@@ -20,9 +20,11 @@ that is read back and compared with the original data.
 | 3 | Inheritance, interfaces and polymorphism | [v1.2.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.0) | [#12](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/12) |
 | — | Cleanup of labs 1–3 | [v1.2.1](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.2.1) | [#21](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/21) |
 | 4 | Stream API | [v1.3.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.3.0) | [#28](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/28) |
-| 5 | Generic repository, annotations, reflection, CSV export | v1.4.0 | this branch |
+| 5 | Generic repository, annotations, reflection, CSV export | [v1.4.0](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/v1.4.0) | [#36](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/36) |
 
 Lab reports are in [`REPORT.md`](REPORT.md) (latest lab) and [`docs/reports`](docs/reports) (earlier labs).
+The Python labs are in the [`main-python`](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/main-python) branch;
+the overview of the whole course is in [`main`](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/tree/main).
 
 ## Input format
 

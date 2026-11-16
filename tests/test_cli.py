@@ -15,6 +15,7 @@ from gym_membership.cli import main
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "input.csv"
 PYPROJECT = ROOT / "pyproject.toml"
+LAB6_REPORT = ROOT / "tests" / "fixtures" / "lab6_report.txt"
 
 
 def test_report_is_printed_and_saved(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -27,6 +28,39 @@ def test_report_is_printed_and_saved(tmp_path: Path, capsys: pytest.CaptureFixtu
     report = output.read_text(encoding="utf-8")
     assert printed == report + f"Report saved to {output}\n"
     assert "Leader: Іван Федорчук (45 visits)" in report
+
+
+def test_saved_report_keeps_lab6_lines_and_adds_object_lines(tmp_path: Path) -> None:
+    """The file written by the program starts with the Lab 6 report, then the new lines."""
+    output = tmp_path / "summary.txt"
+
+    assert main([str(DATA), str(output)]) == 0
+
+    saved = output.read_bytes()
+    assert saved.startswith(LAB6_REPORT.read_bytes())
+    assert saved.endswith(
+        "Average visit cost: 253.75\n"
+        "Most expensive visit: Олена Петрівна (600.00)\n"
+        "Expired: 2\n"
+        "Ending within 30 days: 3\n"
+        "Next end: 2026-11-05\n".encode()
+    )
+
+
+def test_rule_of_the_class_gives_exit_code_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule broken inside the class is reported like any other data error."""
+    broken = tmp_path / "broken.csv"
+    broken.write_text(
+        "customer,kind,start,end,visits\nАнна,annual,2026-10-05,2026-11-05,-3\n", encoding="utf-8"
+    )
+
+    assert main([str(broken), str(tmp_path / "summary.txt")]) == 1
+
+    assert capsys.readouterr().err == (
+        "Error: line 2: visits must be a whole number from 0, got -3\n"
+    )
 
 
 def test_date_option_changes_the_selection(tmp_path: Path) -> None:

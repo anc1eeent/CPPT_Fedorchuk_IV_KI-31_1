@@ -4,6 +4,9 @@
 # Shell scripts must keep LF on every system.
 *.sh text eol=lf
 
+# Expected reports are compared byte for byte, so they keep LF on Windows too.
+tests/fixtures/*.txt text eol=lf
+
 # Binary files are never converted.
 *.png binary
 *.whl binary

@@ -1,0 +1,10 @@
+Gym membership report
+Reference date: 2026-11-01
+Records: 8
+Active memberships: 5
+Active customers: Іван Федорчук; Марія Іванівна; Олег Савчук; Анна Литвин; Ірина Бондар
+Visits by kind: annual=93, monthly=30
+Unique customers: 7
+Customers: Іван Федорчук; Ірина Бондар; Анна Литвин; Коваль, Петро; Марія Іванівна; Олег Савчук; Олена Петрівна
+Average visits: 15.38
+Leader: Іван Федорчук (45 visits)

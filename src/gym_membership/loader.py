@@ -5,25 +5,19 @@ from __future__ import annotations
 import csv
 from datetime import date
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from .errors import DataError
+from .models import AnnualMembership, Membership, MonthlyMembership
 
 REQUIRED_COLUMNS = ("customer", "kind", "start", "end", "visits")
 """Columns that every input file must have, in the documented order."""
 
-KINDS = ("annual", "monthly")
-"""Allowed membership kinds after normalisation."""
-
-
-class Membership(TypedDict):
-    """One membership. At run time it is an ordinary dictionary; the class only names its keys."""
-
-    customer: str
-    kind: str
-    start: date
-    end: date
-    visits: int
+KINDS: dict[str, type[Membership]] = {
+    AnnualMembership.kind: AnnualMembership,
+    MonthlyMembership.kind: MonthlyMembership,
+}
+"""The class to create for every allowed kind (after normalisation to lower case)."""
 
 
 def load_memberships(path: Path) -> list[Membership]:
@@ -49,7 +43,10 @@ def load_memberships(path: Path) -> list[Membership]:
 
 
 def parse_row(row: dict[Any, Any], line: int) -> Membership:
-    """Convert one CSV row to a membership with typed values.
+    """Convert one CSV row to an object of the subtype named in the ``kind`` column.
+
+    The loader converts text to types; the rules of the values (end after start, visits
+    from zero) are checked by the class itself, and its ValueError becomes a DataError.
 
     Raises:
         DataError: a value is missing, cannot be converted or breaks a rule.
@@ -65,11 +62,12 @@ def parse_row(row: dict[Any, Any], line: int) -> Membership:
         )
     start = _parse_date(_required(row, "start", line), line, "start")
     end = _parse_date(_required(row, "end", line), line, "end")
-    if end <= start:
-        raise DataError(f"end {end} is not after start {start}", line=line, field="end")
     visits = _parse_visits(_required(row, "visits", line), line)
 
-    return {"customer": customer, "kind": kind, "start": start, "end": end, "visits": visits}
+    try:
+        return KINDS[kind](customer, start, end, visits)
+    except ValueError as error:
+        raise DataError(str(error), line=line) from error
 
 
 def _required(row: dict[Any, Any], field: str, line: int) -> str:
@@ -89,11 +87,8 @@ def _parse_date(text: str, line: int, field: str) -> date:
 
 
 def _parse_visits(text: str, line: int) -> int:
-    """Parse the number of visits: a whole number, zero or more."""
+    """Parse the number of visits as a whole number; its sign is checked by the class."""
     try:
-        visits = int(text)
+        return int(text)
     except ValueError as error:
         raise DataError(f"not a whole number: '{text}'", line=line, field="visits") from error
-    if visits < 0:
-        raise DataError(f"must not be negative, got {visits}", line=line, field="visits")
-    return visits

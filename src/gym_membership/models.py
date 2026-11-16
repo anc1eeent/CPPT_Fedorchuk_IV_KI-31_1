@@ -82,7 +82,7 @@ class Membership(ABC):
     def __repr__(self) -> str:
         """Text for developers: the class and every value."""
         return (
-             f"{type(self).__name__}(customer={self.customer!r}, start={self.start!r}, "
+            f"{type(self).__name__}(customer={self.customer!r}, start={self.start!r}, "
             f"end={self.end!r}, visits={self.visits})"
         )
 
@@ -100,3 +100,27 @@ class Membership(ABC):
     def __hash__(self) -> int:
         """Hash of the values that never change, consistent with __eq__."""
         return hash((type(self), self.start, self.end))
+
+
+class MonthlyMembership(Membership):
+    """A membership paid every month; the price of a visit grows with the months."""
+
+    kind: ClassVar[str] = "monthly"
+    PRICE_PER_MONTH: ClassVar[float] = 600.0
+    """Price of one month in hryvnias."""
+
+    def visit_cost(self) -> float:
+        """Return the price of all months divided by the visits (at least one visit)."""
+        return self.PRICE_PER_MONTH * self.months / max(1, self.visits)
+
+
+class AnnualMembership(Membership):
+    """A membership paid once for the whole contract, whatever its length."""
+
+    kind: ClassVar[str] = "annual"
+    CONTRACT_PRICE: ClassVar[float] = 5400.0
+    """Price of the whole contract in hryvnias."""
+
+    def visit_cost(self) -> float:
+        """Return the contract price divided by the visits (at least one visit)."""
+        return self.CONTRACT_PRICE / max(1, self.visits)

@@ -7,22 +7,19 @@ from gym_membership.loader import load_memberships
 from gym_membership.reporting import format_line, format_report, write_report
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "input.csv"
+LAB6_REPORT = Path(__file__).resolve().parent / "fixtures" / "lab6_report.txt"
+"""The report of Lab 6 (dictionaries), saved before the move to objects."""
 
-EXPECTED = "".join(
+NEW_LINES = "".join(
     [
-        "Gym membership report\n",
-        "Reference date: 2026-11-01\n",
-        "Records: 8\n",
-        "Active memberships: 5\n",
-        "Active customers: Іван Федорчук; Марія Іванівна; Олег Савчук; Анна Литвин; Ірина Бондар\n",
-        "Visits by kind: annual=93, monthly=30\n",
-        "Unique customers: 7\n",
-        "Customers: Іван Федорчук; Ірина Бондар; Анна Литвин; Коваль, Петро; "
-        "Марія Іванівна; Олег Савчук; Олена Петрівна\n",
-        "Average visits: 15.38\n",
-        "Leader: Іван Федорчук (45 visits)\n",
+        "Average visit cost: 253.75\n",
+        "Most expensive visit: Олена Петрівна (600.00)\n",
+        "Expired: 2\n",
+        "Ending within 30 days: 3\n",
+        "Next end: 2026-11-05\n",
     ]
 )
+EXPECTED = LAB6_REPORT.read_text(encoding="utf-8") + NEW_LINES
 
 
 def test_format_line_lists_values_in_order() -> None:
@@ -58,6 +55,15 @@ def test_report_of_control_data() -> None:
     assert format_report(load_memberships(DATA), date(2026, 11, 1)) == EXPECTED
 
 
+def test_report_starts_with_lab6_report() -> None:
+    """Objects give the same ten lines as the dictionaries of Lab 6, byte for byte."""
+    lab6 = LAB6_REPORT.read_bytes()
+    report = format_report(load_memberships(DATA), date(2026, 11, 1)).encode("utf-8")
+
+    assert lab6.count(b"\n") == 10
+    assert report.startswith(lab6)
+
+
 def test_report_is_stable() -> None:
     """The same records give the same text every time."""
     records = load_memberships(DATA)
@@ -73,6 +79,7 @@ def test_report_with_empty_selection() -> None:
 
     assert "Active memberships: 0\nActive customers: none\n" in text
     assert "Leader: Іван Федорчук (45 visits)" in text
+    assert "Expired: 0\nEnding within 30 days: 0\nNext end: none\n" in text
 
 
 def test_report_of_no_records() -> None:
@@ -88,6 +95,11 @@ def test_report_of_no_records() -> None:
         "Customers: none\n"
         "Average visits: 0.00\n"
         "Leader: none\n"
+        "Average visit cost: 0.00\n"
+        "Most expensive visit: none\n"
+        "Expired: 0\n"
+        "Ending within 30 days: 0\n"
+        "Next end: none\n"
     )
 
 

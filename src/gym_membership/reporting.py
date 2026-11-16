@@ -6,7 +6,8 @@ from datetime import date
 from pathlib import Path
 
 from .analysis import active_on, average_visits, leader, unique_customers, visits_by_kind
-from .loader import Membership
+from .models import Membership
+from .summaries import EXPIRY_WINDOW, average_visit_cost, most_expensive_visit, summarize_expiry
 
 TITLE = "Gym membership report"
 
@@ -27,21 +28,34 @@ def format_report(records: list[Membership], reference_date: date) -> str:
     Active customers keep the order of the input file, other customers are sorted by their
     Unicode code points, so the order does not depend on the language of the system.
     Names are joined with "; " because a name may contain a comma.
+
+    The first ten lines are the report of Lab 6 without any change; the object model
+    adds the visit price and the expiry lines after them.
     """
     active = active_on(records, reference_date)
     customers = sorted(unique_customers(records))
     top = leader(records)
+    priciest = most_expensive_visit(records)
+    expiry = summarize_expiry(records, reference_date)
     lines = [
         TITLE,
         format_line("Reference date", reference_date.isoformat()),
         format_line("Records", len(records)),
         format_line("Active memberships", len(active)),
-        format_line("Active customers", *(record["customer"] for record in active), joiner="; "),
+        format_line("Active customers", *(record.customer for record in active), joiner="; "),
         format_line("Visits by kind", **visits_by_kind(records)),
         format_line("Unique customers", len(customers)),
         format_line("Customers", *customers, joiner="; "),
         format_line("Average visits", f"{average_visits(records):.2f}"),
-        format_line("Leader", *([f"{top['customer']} ({top['visits']} visits)"] if top else [])),
+        format_line("Leader", *([f"{top.customer} ({top.visits} visits)"] if top else [])),
+        format_line("Average visit cost", f"{average_visit_cost(records):.2f}"),
+        format_line(
+            "Most expensive visit",
+            *([f"{priciest.customer} ({priciest.visit_cost():.2f})"] if priciest else []),
+        ),
+        format_line("Expired", expiry.expired),
+        format_line(f"Ending within {EXPIRY_WINDOW.days} days", expiry.ending_soon),
+        format_line("Next end", *([expiry.next_end.isoformat()] if expiry.next_end else [])),
     ]
     return "\n".join(lines) + "\n"
 

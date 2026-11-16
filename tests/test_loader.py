@@ -7,6 +7,7 @@ import pytest
 
 from gym_membership.errors import DataError
 from gym_membership.loader import load_memberships
+from gym_membership.models import AnnualMembership, MonthlyMembership
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "input.csv"
 HEADER = "customer,kind,start,end,visits\n"
@@ -24,20 +25,24 @@ def test_control_data_is_loaded_with_types() -> None:
     records = load_memberships(DATA)
 
     assert len(records) == 8
-    assert records[0] == {
-        "customer": "Іван Федорчук",
-        "kind": "annual",
-        "start": date(2026, 1, 15),
-        "end": date(2027, 1, 15),
-        "visits": 45,
-    }
-    assert records[4]["kind"] == "monthly"  # "Monthly" in the file
-    assert records[7]["visits"] == 0  # boundary value
+    assert records[0] == AnnualMembership("Іван Федорчук", date(2026, 1, 15), date(2027, 1, 15), 45)
+    assert records[4].kind == "monthly"  # "Monthly" in the file
+    assert records[7].visits == 0  # boundary value
+
+
+def test_kind_column_chooses_the_class() -> None:
+    """Every row becomes an object of the subtype named in the kind column."""
+    kinds = [type(record) for record in load_memberships(DATA)]
+
+    assert kinds == [AnnualMembership] * 3 + [MonthlyMembership] * 3 + [
+        AnnualMembership,
+        MonthlyMembership,
+    ]
 
 
 def test_comma_inside_quotes_stays_in_text() -> None:
     """A quoted customer name with a comma is one field."""
-    assert load_memberships(DATA)[1]["customer"] == "Коваль, Петро"
+    assert load_memberships(DATA)[1].customer == "Коваль, Петро"
 
 
 def test_empty_file_gives_no_records(tmp_path: Path) -> None:
@@ -54,7 +59,7 @@ def test_header_with_byte_order_mark_is_accepted(tmp_path: Path) -> None:
     """A byte order mark written by a Windows editor does not hide the first column."""
     path = write_csv(tmp_path, "﻿" + HEADER + "Анна Литвин,monthly,2026-10-05,2026-11-05,12\n")
 
-    assert load_memberships(path)[0]["customer"] == "Анна Литвин"
+    assert load_memberships(path)[0].customer == "Анна Литвин"
 
 
 def test_missing_column_is_reported_before_rows(tmp_path: Path) -> None:
@@ -74,14 +79,6 @@ def test_missing_column_is_reported_before_rows(tmp_path: Path) -> None:
         ("Анна Литвин,monthly,2026-10-05,2026-11-05,", r"^line 2, field 'visits': missing value$"),
         ("Анна Литвин,monthly,2026-10-05,2026-11-05", r"^line 2, field 'visits': missing value$"),
         ("Анна Литвин,weekly,2026-10-05,2026-11-05,12", r"^line 2, field 'kind': unknown kind"),
-        (
-            "Анна Литвин,monthly,2026-10-05,2026-10-05,12",
-            r"^line 2, field 'end': end .* is not after",
-        ),
-        (
-            "Анна Литвин,monthly,2026-10-05,2026-11-05,-1",
-            r"^line 2, field 'visits': must not be negative",
-        ),
         ("Анна Литвин,monthly,2026-10-05,2026-11-05,12,extra", r"^line 2: too many values$"),
     ],
 )
@@ -91,6 +88,30 @@ def test_invalid_row_names_line_and_field(tmp_path: Path, row: str, message: str
 
     with pytest.raises(DataError, match=message):
         load_memberships(path)
+
+
+@pytest.mark.parametrize(
+    ("row", "message"),
+    [
+        (
+            "Анна Литвин,monthly,2026-10-05,2026-10-05,12",
+            "line 2: end 2026-10-05 must be after start 2026-10-05",
+        ),
+        (
+            "Анна Литвин,monthly,2026-10-05,2026-11-05,-1",
+            "line 2: visits must be a whole number from 0, got -1",
+        ),
+    ],
+)
+def test_rule_of_the_class_becomes_data_error(tmp_path: Path, row: str, message: str) -> None:
+    """The class checks its rules; the loader adds the line and keeps the ValueError."""
+    path = write_csv(tmp_path, HEADER + row + "\n")
+
+    with pytest.raises(DataError) as error:
+        load_memberships(path)
+
+    assert str(error.value) == message
+    assert isinstance(error.value.__cause__, ValueError)
 
 
 def test_bad_number_keeps_original_error(tmp_path: Path) -> None:

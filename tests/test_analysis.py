@@ -11,7 +11,8 @@ from gym_membership.analysis import (
     unique_customers,
     visits_by_kind,
 )
-from gym_membership.loader import Membership, load_memberships
+from gym_membership.loader import load_memberships
+from gym_membership.models import Membership, MonthlyMembership
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "input.csv"
 REFERENCE_DATE = date(2026, 11, 1)
@@ -26,18 +27,12 @@ def membership(
     customer: str, visits: int, start: str = "2026-10-01", end: str = "2026-11-01"
 ) -> Membership:
     """Build one membership for a small test."""
-    return {
-        "customer": customer,
-        "kind": "monthly",
-        "start": date.fromisoformat(start),
-        "end": date.fromisoformat(end),
-        "visits": visits,
-    }
+    return MonthlyMembership(customer, date.fromisoformat(start), date.fromisoformat(end), visits)
 
 
 def test_active_on_reference_date_keeps_file_order() -> None:
     """Five memberships are active on 2026-11-01, in the order of the file."""
-    names = [record["customer"] for record in active_on(records(), REFERENCE_DATE)]
+    names = [record.customer for record in active_on(records(), REFERENCE_DATE)]
 
     assert names == [
         "Іван Федорчук",
@@ -94,7 +89,7 @@ def test_leader_has_most_visits() -> None:
     top = leader(records())
 
     assert top is not None
-    assert (top["customer"], top["visits"]) == ("Іван Федорчук", 45)
+    assert (top.customer, top.visits) == ("Іван Федорчук", 45)
     assert leader([]) is None
 
 

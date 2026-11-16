@@ -1,341 +1,283 @@
-# Lab 6 — Data processing in a Python package
+# Lab 7 — Object-oriented data processing in Python
 
 ## 1. Topic, number and variant
 
 | | |
 |---|---|
-| Lab | 6 — Data processing: CSV, collections, comprehensions and functions |
+| Lab | 7 — Object-oriented data processing: classes, properties, dataclasses, subtypes |
 | Variant | 20 — gym memberships |
 | Author | Fedorchuk I. V., group KI-31 |
 | Development OS | Windows 11, Python 3.13.15 |
 | CI | GitHub Actions: Ubuntu, Windows, macOS, Python 3.11 |
-| Version | `1.1.0`, tag `py-v1.1.0`, branch `lab-06-python`, pull request [#50](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/pull/50) |
+| Version | `1.2.0`, tag `py-v1.2.0`, branch `lab-07-python` |
 
-Requirements of variant 20:
+Requirements of variant 20 and where they are implemented:
 
 | Part | Requirement | Implementation |
 |---|---|---|
-| CSV fields | `customer,kind,start,end,visits` | `loader.REQUIRED_COLUMNS` |
-| Selection | membership active on `reference_date` | `active_on`: `start <= reference_date < end` |
-| Dictionary | visits by `kind` | `visits_by_kind` |
-| Set | customers | `unique_customers` |
-| Report | average number of visits and the leader | `average_visits`, `leader` |
-| Reference date | `2026-11-01` (ISO), option `--date` | `cli.DEFAULT_DATE` |
+| Base class | `Membership` | `models.Membership` (abstract, `ABC`) |
+| Subtypes | `MonthlyMembership`, `AnnualMembership` | `models.py` |
+| Shared operation | `visit_cost()` by tariff | a different formula in every subtype |
+| Summary | memberships that end | `summaries.ExpirySummary`, `@dataclass(frozen=True)` |
+| CSV fields | `customer,kind,start,end,visits` (unchanged) | `loader.REQUIRED_COLUMNS` |
+| Reference date | `2026-11-01`, option `--date` (unchanged) | `cli.DEFAULT_DATE` |
 
-## 2. Goal
+## 2. State before and after
 
-Build a Python package that reads the CSV of the variant, converts every row to typed values,
-computes the indicators with the standard collections and comprehensions, and writes a stable
-text report. The package runs as a CLI, is checked with pytest and ruff, and is built into a wheel.
+| | Lab 6 (dictionaries) | Lab 7 (objects) |
+|---|---|---|
+| One record | `dict` described by `TypedDict` | instance of `MonthlyMembership` or `AnnualMembership` |
+| Access to a field | `record["visits"]` | `record.visits` |
+| Value rules | `if` checks in `loader.py` | `@property` setters and `__init__` of the class |
+| Kind of membership | string `"monthly"` / `"annual"` | the class of the object; `kind` is a class constant |
+| Behaviour | only outside functions | methods: `months`, `is_active_on`, `visit_cost` |
+| Choosing a formula | would need `if record["kind"] == ...` | polymorphism: every subtype has its own `visit_cost` |
+| Summary value | — | frozen `ExpirySummary` |
+| Comparison | dictionaries are equal by all keys | `__eq__`: same subtype and same values |
+| Report | 10 lines | the same 10 lines, then 5 new lines |
 
-Result: `gym-membership data/input.csv reports/summary.txt` prints and saves the report of section 9
-and returns exit code 0; a broken CSV returns 1 with the line and the field of the error.
+The loader is the only place where a row becomes an object:
 
-## 3. CSV format
+```python
+KINDS: dict[str, type[Membership]] = {
+    AnnualMembership.kind: AnnualMembership,
+    MonthlyMembership.kind: MonthlyMembership,
+}
+...
+return KINDS[kind](customer, start, end, visits)
+```
 
-UTF-8, comma-separated, first line is the header:
+The dictionary chooses the class by the `kind` column, so no `if` on the kind is needed.
+
+## 3. Model
+
+`Membership(ABC)` is the base class; it cannot be created because `visit_cost` is abstract.
+
+| Member | Kind | Rule |
+|---|---|---|
+| `customer` | property with setter | not blank, stored without spaces around it |
+| `visits` | property with setter | `int`, 0 or more; `1.5`, `"12"` and `-1` raise `ValueError` |
+| `start`, `end` | read-only properties | `end` must be after `start` (checked in `__init__`) |
+| `months` | read-only computed property | calendar months from `start` to `end` |
+| `kind` | `ClassVar[str]` | `"monthly"` or `"annual"`, the value of the CSV column |
+| `is_active_on(day)` | method | `start <= day < end` |
+| `visit_cost()` | abstract method | every subtype has its own formula |
+
+The setters write to the inner fields `_customer`, `_visits`; `__init__` assigns through the
+properties (`self.visits = visits`), so the same check works when the object is created and changed.
+
+Special methods:
+
+| Method | Result for Олег Савчук |
+|---|---|
+| `__str__` | `Олег Савчук: monthly, 2026-10-20 to 2026-11-20, 12 visits` |
+| `__repr__` | `MonthlyMembership(customer='Олег Савчук', start=datetime.date(2026, 10, 20), end=datetime.date(2026, 11, 20), visits=12)` |
+| `__eq__` | equal only to an object of the same subtype with the same four values; `NotImplemented` for other types |
+| `__hash__` | hash of the subtype, `start` and `end`, the values that never change, so a changed name or visit count does not break a set |
+
+Order: `leader` uses `key=(-visits, customer)` and `most_expensive_visit` uses
+`key=(-visit_cost(), customer)`; a tie goes to the alphabetically first name. A `key` is clearer
+here than `__lt__`, because memberships have no single natural order.
+
+## 4. Dataclass
+
+```python
+@dataclass(frozen=True)
+class ExpirySummary:
+    reference_date: date
+    expired: int
+    ending_soon: int
+    next_end: date | None
+```
+
+`summarize_expiry(records, reference_date, window=EXPIRY_WINDOW)` builds it:
+
+| Field | Meaning | Control data |
+|---|---|---|
+| `expired` | memberships with `end <= reference_date` | 2 (Коваль, Петро; Марія Іванівна 2025) |
+| `ending_soon` | active memberships that end within 30 days (inclusive) | 3 (Олег, Анна, Ірина: 30 days exactly) |
+| `next_end` | the nearest end of an active membership | `2026-11-05` |
+
+`@dataclass` generates `__init__`, `__repr__` and `__eq__`; `frozen=True` forbids changing a field
+(`FrozenInstanceError`) and adds `__hash__`. A summary is a result: once computed it must not change.
+
+## 5. Subtypes and protocol
+
+| Subtype | `kind` | Tariff | `visit_cost()` |
+|---|---|---|---|
+| `MonthlyMembership` | `monthly` | 600 UAH for every month | `600 * months / max(1, visits)` |
+| `AnnualMembership` | `annual` | 5400 UAH for the whole contract | `5400 / max(1, visits)` |
+
+The monthly price depends on the length, the annual one does not. With 0 visits the price of the
+whole period is the price of one visit (no division by zero).
+
+| Customer | Subtype | Months | Visits | `visit_cost()` |
+|---|---|---|---|---|
+| Іван Федорчук | annual | 12 | 45 | 120.00 |
+| Коваль, Петро | annual | 3 | 10 | 540.00 |
+| Марія Іванівна | annual | 6 | 20 | 270.00 |
+| Олег Савчук | monthly | 1 | 12 | 50.00 |
+| Анна Литвин | monthly | 1 | 12 | 50.00 |
+| Ірина Бондар | monthly | 1 | 6 | 100.00 |
+| Марія Іванівна | annual | 6 | 18 | 300.00 |
+| Олена Петрівна | monthly | 1 | 0 | 600.00 |
+
+The shared behaviour is the protocol `VisitCostSource` (a property `customer` and a method
+`visit_cost()`). `average_visit_cost` and `most_expensive_visit` accept any object that has them:
+they call `item.visit_cost()` and Python runs the formula of the real class. There is no
+`isinstance` and no check of `kind` in `analysis.py` or `summaries.py`. A test passes a small class
+`Priced` that does not inherit `Membership` and works with the same functions (duck typing).
+
+## 6. Modules
 
 ```text
-customer,kind,start,end,visits
-Іван Федорчук,annual,2026-01-15,2027-01-15,45
-"Коваль, Петро",annual,2026-08-01,2026-11-01,10
-Марія Іванівна,annual,2026-06-10,2026-12-10,20
-Олег Савчук,monthly,2026-10-20,2026-11-20,12
-Анна Литвин,Monthly,2026-10-05,2026-11-05,12
-Ірина Бондар,monthly,2026-11-01,2026-12-01,6
-Марія Іванівна,annual,2025-12-01,2026-06-01,18
-Олена Петрівна,monthly,2026-11-02,2026-12-02,0
+src/gym_membership/
+├── models.py       Membership, MonthlyMembership, AnnualMembership; no files, no CLI
+├── summaries.py    VisitCostSource, average_visit_cost, most_expensive_visit, ExpirySummary
+├── loader.py       CSV → objects; text to types, ValueError of the class → DataError with the line
+├── analysis.py     Lab 6 indicators, now with attributes; works with both subtypes
+├── reporting.py    report text and UTF-8 file
+├── errors.py       DataError with the line and the field
+└── cli.py          argparse, exit codes 0/1/2 (unchanged)
 ```
 
-| Field | Type | Rule |
-|---|---|---|
-| `customer` | `str` | not blank |
-| `kind` | `str` | `annual` or `monthly` after `strip().lower()` |
-| `start` | `date` | ISO `YYYY-MM-DD` |
-| `end` | `date` | ISO, later than `start` |
-| `visits` | `int` | whole number, not negative |
+`models.py` does not read files, `loader.py` does not build the report, `analysis.py` does not
+depend on the CLI. Importing a module runs no program: `cli.main` runs only from the console command
+or `python -m gym_membership.cli`.
 
-Required cases of the data:
+## 7. Testing
 
-| Case | Row |
-|---|---|
-| text with a comma | `"Коваль, Петро"`: quoted, read as one field |
-| duplicated value | Марія Іванівна has two memberships; the set holds her once |
-| boundary number | Олена Петрівна, `visits = 0`, the smallest allowed value |
-| boundary dates | Петро ends and Ірина starts exactly on 2026-11-01 |
-| normalisation | `Monthly` of Анна Литвин becomes `monthly` |
-| empty selection | `--date 2025-01-01`: no membership is active (section 7) |
-
-Empty input: an empty file and a file with only the header are both valid and give a report with
-zeros and `none`.
-
-## 4. Module structure
-
-| Module | Purpose | Public names |
-|---|---|---|
-| `errors.py` | the error of the input data | `DataError(message, line=, field=)` |
-| `loader.py` | reading and checking the CSV, type conversion | `load_memberships`, `parse_row`, `Membership` |
-| `analysis.py` | indicators of the variant, no input or output | `active_on`, `visits_by_kind`, `unique_customers`, `average_visits`, `leader` |
-| `reporting.py` | report text and file | `format_line`, `format_report`, `write_report` |
-| `cli.py` | arguments, the program flow, exit codes | `build_parser`, `main` |
-
-The dependencies go one way: `cli` → `reporting` → `analysis` → `loader` → `errors`. Importing any
-module runs no program code: `cli.main()` runs only under `if __name__ == "__main__"` or through
-the console command.
-
-## 5. Data conversion
-
-A record is a dictionary. `Membership` is a `TypedDict`: it only tells the editor and the reader
-which keys a record has; at run time it is an ordinary `dict`.
-
-```python
-{
-    "customer": "Іван Федорчук",
-    "kind": "annual",
-    "start": date(2026, 1, 15),
-    "end": date(2027, 1, 15),
-    "visits": 45,
-}
-```
-
-| Structure | Where | Why |
-|---|---|---|
-| list | records from the loader, `active_on` | keeps the order of the file |
-| dictionary | every record, `visits_by_kind` | value by name of the field or the kind |
-| set | `unique_customers`, kinds in `visits_by_kind` | removes duplicates |
-
-Comprehensions:
-
-```python
-[record for record in records if record["start"] <= reference_date < record["end"]]  # list
-{record["customer"] for record in records}  # set
-kinds = sorted({record["kind"] for record in records})  # set
-{
-    kind: sum(record["visits"] for record in records if record["kind"] == kind)  # dictionary
-    for kind in kinds
-}
-[parse_row(row, reader.line_num) for row in reader]  # list, loader
-```
-
-Five fields become typed values: `start` and `end` → `date`, `visits` → `int`, `kind` → normalised
-text, `customer` → text without surrounding spaces.
-
-## 6. Functions
-
-`reporting.format_line` has a default parameter, `*args` and `**kwargs`:
-
-```python
-def format_line(label: str, *values: object, joiner: str = ", ", **pairs: object) -> str:
-    parts = [str(value) for value in values] + [f"{key}={value}" for key, value in pairs.items()]
-    return f"{label}: {joiner.join(parts) if parts else 'none'}"
-```
-
-| Call | Result |
-|---|---|
-| `format_line("Records", 8)` | `Records: 8` |
-| `format_line("Visits by kind", annual=93, monthly=30)` | `Visits by kind: annual=93, monthly=30` |
-| `format_line("Customers", "Коваль, Петро", "Анна", joiner="; ")` | `Customers: Коваль, Петро; Анна` |
-| `format_line("Leader")` | `Leader: none` |
-
-Inside the function `values` is a tuple of the positional arguments and `pairs` is a dictionary of
-the keyword arguments. The default `", "` is a string, which cannot be changed, so it is safe as a
-default value.
-
-## 7. Analysis algorithm
-
-| Step | Function | Control data |
-|---|---|---|
-| selection | `active_on`: list comprehension, `start <= date < end` | 5 of 8; Петро (end = date) out, Ірина (start = date) in |
-| aggregation | `visits_by_kind`: sorted set of kinds, then dict comprehension with `sum` | `annual=93, monthly=30` |
-| unique values | `unique_customers`: set comprehension | 7 customers from 8 records |
-| average | `sum(...) / len(records)`, `0.0` for no records | 123 / 8 = 15.375 → `15.38` |
-| leader | `min(records, key=lambda r: (-r["visits"], r["customer"]), default=None)` | Іван Федорчук, 45 |
-
-The leader key is a tuple: the negative number of visits makes `min` choose the most visits, and
-for equal visits the second element chooses the alphabetically first customer (Анна before Олег).
-
-Deterministic order:
-
-- active customers keep the order of the file;
-- kinds and customers are sorted by Unicode code points, which do not depend on the language of the
-  system (that is why `Іван` comes before `Анна`: `І` is U+0406, `А` is U+0410);
-- numbers are printed with two decimals.
-
-With `--date 2025-01-01` the selection is empty: `Active memberships: 0`, `Active customers: none`.
-
-## 8. Error handling
-
-Every rule of the data raises `DataError` with the line of the file and the field. A conversion
-error keeps the original exception as the cause:
-
-```python
-try:
-    visits = int(text)
-except ValueError as error:
-    raise DataError(f"not a whole number: '{text}'", line=line, field="visits") from error
-```
-
-| Case | Message |
-|---|---|
-| missing column | `line 1: missing columns: visits` |
-| missing value | `line 2, field 'customer': missing value` |
-| bad number | `line 2, field 'visits': not a whole number: 'twelve'` (cause `ValueError`) |
-| negative number | `line 2, field 'visits': must not be negative, got -1` |
-| bad date | `line 2, field 'start': not a date (YYYY-MM-DD): '05.10.2026'` (cause `ValueError`) |
-| unknown kind | `line 2, field 'kind': unknown kind 'weekly', expected one of annual, monthly` |
-| end not after start | `line 2, field 'end': end 2026-10-05 is not after start 2026-10-05` |
-| extra value | `line 2: too many values` |
-
-There is no bare `except`. The CLI catches only `DataError` and `OSError`:
-
-| Exit code | When | Output |
-|---|---|---|
-| 0 | success | report and `Report saved to <path>` on stdout |
-| 1 | `DataError`, missing or unreadable file | `Error: <message>` on stderr, no report file |
-| 2 | invalid arguments (argparse) | usage and the reason on stderr |
-
-## 9. File report
-
-`reporting.write_report` creates the folder and writes the text:
-
-```python
-path.parent.mkdir(parents=True, exist_ok=True)
-with path.open("w", encoding="utf-8", newline="\n") as file:
-    file.write(text)
-```
-
-`with` closes the file even when writing fails. The report is UTF-8 with LF line ends on every
-system. The CLI refuses an output path equal to the input path, so the input is never changed.
-
-Full report of the control data (`reports/summary.txt`):
-
-```text
-Gym membership report
-Reference date: 2026-11-01
-Records: 8
-Active memberships: 5
-Active customers: Іван Федорчук; Марія Іванівна; Олег Савчук; Анна Литвин; Ірина Бондар
-Visits by kind: annual=93, monthly=30
-Unique customers: 7
-Customers: Іван Федорчук; Ірина Бондар; Анна Литвин; Коваль, Петро; Марія Іванівна; Олег Савчук; Олена Петрівна
-Average visits: 15.38
-Leader: Іван Федорчук (45 visits)
-```
-
-## 10. Testing
-
-`python -m pytest`: **49 passed**.
+`python -m pytest`: **97 passed**.
 
 | File | Tests | What they prove |
 |---|---|---|
-| `test_loader.py` | 17 | control data with types; comma in quotes; empty file; header only; byte order mark; missing column; 7 invalid rows (missing values, unknown kind, end before start, negative visits, extra value); bad number and bad date keep the `ValueError`; line numbers; input not changed |
-| `test_analysis.py` | 10 | active on the date in file order; start included, end excluded; empty selection; sums by kind in sorted order; empty dictionary; duplicates in the set; average and `0.0`; leader and `None`; tie by name; input not changed |
-| `test_reporting.py` | 10 | `format_line` with `*values`, `**pairs`, another joiner and no values; full control report; stable text; empty selection; no records; UTF-8 file with LF; old report replaced |
-| `test_cli.py` | 12 | report printed and saved; `--date`; broken CSV → 1 without a report; missing input → 1; five invalid argument sets → 2; `--version`; version equals `pyproject.toml`; `python -m gym_membership.cli` in a separate process |
+| `test_models.py` | 23 | values stored and stripped; abstract base; customer setter; visits setter: 0, 1, 12, 10 000 accepted, −1, 1.5, "12" rejected, also in `__init__`; read-only dates; end after start; months; active from start to end; exact `str` and `repr`; equality, hash and set; other subtype or other value is not equal; `NotImplemented` |
+| `test_summaries.py` | 21 | subtypes and their `kind`; both formulas; zero visits; cost of every control record; same values of two subtypes are not equal; average and most expensive visit, tie, empty input; protocol with an object that is not a `Membership`; any iterable; expiry summary of the control data, window end inclusive, own window, empty input; frozen dataclass, generated `repr` and hash |
+| `test_loader.py` | 18 | control data become objects of the right subtype; comma in quotes; empty file; header only; byte order mark; missing column; invalid rows; rule of the class becomes `DataError` with the line and keeps the `ValueError`; bad number and date; line numbers |
+| `test_analysis.py` | 10 | the Lab 6 indicators on objects; input not changed |
+| `test_reporting.py` | 11 | `format_line`; full report; the report starts with the saved Lab 6 report; empty selection; no records; UTF-8 with LF |
+| `test_cli.py` | 14 | the saved file = Lab 6 report + new lines; `--date`; broken CSV → 1; rule of the class → 1 with the message; missing input → 1; invalid arguments → 2; version; separate process |
 
-Tests check behaviour (what a function returns, what the program prints and writes), not the
-inner steps, so the code can be rewritten in Lab 7 without changing them.
+## 8. Report comparison
 
-## 11. Quality and packaging
+The full Lab 6 report on `data/input.csv` is saved in `tests/fixtures/lab6_report.txt`
+(kept with LF on every system by `.gitattributes`). Two tests compare it byte for byte with the
+beginning of the new report: the dictionary model and the object model give the same 10 lines.
+
+```text
+Gym membership report                                   ┐
+Reference date: 2026-11-01                              │
+Records: 8                                              │
+Active memberships: 5                                   │
+Active customers: Іван Федорчук; Марія Іванівна; ...    │  Lab 6 report,
+Visits by kind: annual=93, monthly=30                   │  unchanged
+Unique customers: 7                                     │
+Customers: Іван Федорчук; Ірина Бондар; ...             │
+Average visits: 15.38                                   │
+Leader: Іван Федорчук (45 visits)                       ┘
+Average visit cost: 253.75                              ┐
+Most expensive visit: Олена Петрівна (600.00)           │  added by the
+Expired: 2                                              │  object model
+Ending within 30 days: 3                                │
+Next end: 2026-11-05                                    ┘
+```
+
+The CSV format, the CLI arguments and the exit codes did not change. The only difference in error
+messages: the rules "end after start" and "visits from 0" moved to the class, so their text now
+comes from the class: `line 2: visits must be a whole number from 0, got -3`.
+
+## 9. Infrastructure
 
 ```powershell
 .\.venv\Scripts\python.exe -m ruff check .            # All checks passed!
 .\.venv\Scripts\python.exe -m ruff format --check .   # files already formatted
-.\.venv\Scripts\python.exe -m pytest                  # 49 passed
-.\.venv\Scripts\python.exe -m build --wheel           # dist/gym_membership_py-1.1.0-py3-none-any.whl
+.\.venv\Scripts\python.exe -m pytest                  # 97 passed
+.\.venv\Scripts\python.exe -m build --wheel           # dist/gym_membership_py-1.2.0-py3-none-any.whl
 
 python -m venv .venv-wheel
-.\.venv-wheel\Scripts\python.exe -m pip install --no-deps .\dist\gym_membership_py-1.1.0-py3-none-any.whl
-.\.venv-wheel\Scripts\python.exe -m gym_membership.cli data\input.csv reports\wheel-summary.txt
+.\.venv-wheel\Scripts\python.exe -m pip install --no-deps .\dist\gym_membership_py-1.2.0-py3-none-any.whl
+.\.venv-wheel\Scripts\gym-membership.exe data\input.csv reports\wheel-summary.txt
 ```
 
-Ruff rules: `E`, `W` (style), `F` (unused and undefined names), `I` (import order), `UP` (modern
-syntax), `B` (likely bugs), `SIM` (simpler code); line length 100.
+[Python CI](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/actions/workflows/ci.yml) is the
+same as in Lab 6: on Ubuntu, Windows and macOS with Python 3.11 it runs ruff, pytest, the wheel
+build, the installed CLI on `data/input.csv`, and uploads the wheel as `wheel-<os>-py3.11-<run>`.
 
-## 12. GitHub Actions
-
-[Python CI](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/actions/workflows/ci.yml) runs on
-`ubuntu-latest`, `windows-latest` and `macos-latest` with Python 3.11: ruff check, ruff format check,
-pytest, wheel build, installation of the built wheel, `gym-membership --version`, the report of
-`data/input.csv` by the installed CLI, and upload of the wheel as the artifact
-`wheel-<os>-py3.11-<run>` of every job. `PYTHONUTF8=1` makes the console of the Windows runner print
-Ukrainian text.
-
-## 13. GitHub Issues and pull request
+## 10. GitHub Issues and pull request
 
 | Issue | Change | Check |
 |---|---|---|
-| [#44](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/44) | `errors.py`, `loader.py`, `data/input.csv` | `test_loader.py` |
-| [#45](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/45) | `analysis.py` | `test_analysis.py` |
-| [#46](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/46) | `reporting.py` with `format_line` | `test_reporting.py` |
-| [#47](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/47) | `cli.py` | `test_cli.py` |
-| [#48](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/48) | test data and tests of every module | 49 tests, ruff |
-| [#49](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/49) | README, REPORT, version 1.1.0, CI runs the report | green CI on three systems, tag `py-v1.1.0` |
+| [#51](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/51) | base class `Membership` with properties and special methods | `test_models.py` |
+| [#52](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/52) | `MonthlyMembership`, `AnnualMembership`, `visit_cost()` | `test_summaries.py` (subtypes) |
+| [#53](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/53) | `VisitCostSource`, `ExpirySummary` | `test_summaries.py` (protocol, dataclass) |
+| [#54](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/54) | loader builds objects, analysis uses attributes, report lines | `test_loader.py`, `test_analysis.py`, `test_reporting.py` |
+| [#55](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/55) | comparison with the Lab 6 report, CLI tests, LF fixture | `test_cli.py`, 97 tests |
+| [#56](https://github.com/anc1eeent/CPPT_Fedorchuk_IV_KI-31_1/issues/56) | README, REPORT, docstrings, version 1.2.0 | green CI on three systems, tag `py-v1.2.0` |
 
-## 14. Academic integrity
+## 11. Academic integrity
 
-- **Tool:** Claude (Anthropic), in the roles Manager (Issues #44–#49), Developer, Validator (edge
-  cases of the CSV), DevOps (CI), Documenter (README, REPORT) and Reviewer.
-- **My part:** I wrote `analysis.py` myself — all five functions — from the tests in
-  `test_analysis.py`, with explanations and hints from Claude for each function; Claude reviewed it.
-  I created the Issues and the branch, ran every check locally, created the CI file, made the
-  commits and the pull request.
-- **Written by Claude at my request:** `errors.py`, `loader.py`, `reporting.py`, `cli.py`, all tests,
-  `data/input.csv`, README and this report.
-- **Accepted:** tests of `analysis.py` written before the code, as its specification; `TypedDict`
-  for records; names joined with `;`; sorting by code points for a stable report; refusing an output
-  equal to the input.
-- **Rejected:** sorting names by Ukrainian alphabet with the system locale (the report would differ
-  between systems); `split(",")` for CSV.
-- **Fixed mistakes:** in `visits_by_kind` my first condition `kind == kind` was always true and gave
-  123 for both kinds; in `leader` my first key `-visits` chose the first of two equal records instead
-  of the alphabetically first; the import order rule needed `known-first-party` for the package.
+- **Tool:** Claude (Anthropic), in the roles Manager (Issues #51–#56), Developer, Validator
+  (boundary values of the setters, edge cases), DevOps (line ends in CI), Documenter (README,
+  REPORT) and Reviewer.
+- **My part:** I wrote the base class `Membership` myself — the properties with setters, `months`,
+  `is_active_on`, the abstract `visit_cost`, `__str__`, `__repr__`, `__eq__`, `__hash__` — from the
+  tests in `test_models.py`, with explanations and hints from Claude; Claude reviewed it. I changed
+  `analysis.py` (written by me in Lab 6) from keys to attributes. I created the Issues and the branch,
+  ran every check locally, made the commits and the pull request.
+- **Written by Claude at my request:** the subtypes, `summaries.py`, the changes of `loader.py` and
+  `reporting.py`, all tests, the Lab 6 report fixture, README and this report.
+- **Accepted:** tests of the base class written before the code, as its specification; a dictionary
+  `kind → class` in the loader instead of `if`; value rules inside the class; a frozen dataclass for
+  the summary; `key` functions instead of `__lt__`; the saved Lab 6 report as the proof of
+  compatibility.
+- **Rejected:** an annual formula with integer division `visits // months` (hard to explain, the same
+  price for different data); `isinstance` checks in the analysis; keeping the old rule checks in the
+  loader next to the same checks in the class.
+- **Fixed mistakes:** in the setters my first version compared `value.strip() == None`, did not
+  `raise` and did not store the stripped value; `months` assigned an undefined name; `__str__`
+  returned `print(...)`; `__repr__` had a hard-coded class name and manual date formatting; one line
+  had a wrong indent and failed `ruff format --check`. Claude found that the LF fixture would turn
+  into CRLF on the Windows runner and fixed it with `.gitattributes`.
 
-## 15. Answers to the control questions
+## 12. Answers to the control questions
 
-1. **pyproject.toml** describes the package in one file: name, version, Python version, dependencies,
-   the console command and the settings of pytest and ruff.
-2. **A virtual environment** keeps the packages of this project apart from the system and other
-   projects, so the result can be repeated on any computer.
-3. **`newline=""`** lets the csv module read line breaks itself, so a quoted value with a line break
-   stays one field and `\r\n` is not doubled.
-4. **csv.DictReader** gives every value as `str`; missing values are `None`. Dates and numbers must be
-   converted by the program.
-5. **`split(",")`** splits inside quoted values such as `"Коваль, Петро"` and does not remove the quotes.
-6. **A list** keeps order and duplicates, **a dictionary** finds a value by its key, **a set** keeps only
-   unique values without order.
-7. **A comprehension** is clearer for one short transformation or filter; a loop is better when
-   there are several steps, `try/except` or side effects.
-8. **`*args`** is a tuple of the extra positional arguments, **`**kwargs`** is a dictionary of the extra
-   keyword arguments.
-9. **A mutable default** (for example `[]`) is created once and shared by every call, so changes from
-   one call appear in the next.
-10. **`raise ... from error`** stores the original exception in `__cause__`, and the traceback shows both.
-11. **Separate modules** can be tested and changed one by one: the analysis does not need files, the
-    report does not need CSV parsing.
-12. **`with`** closes the file when the block ends, also when an exception is raised.
-13. **A deterministic order** makes the report the same on every run and system, so it can be compared
-    and tested byte for byte.
-14. **Empty CSV:** an empty file, a file with only the header, and an empty selection; all give a valid
-    report with zeros and `none`, not an error.
-15. **A behaviour test** checks what the code returns or writes; a test of the implementation checks how
-    it does it and breaks when the code is rewritten.
-16. **pytest** finds files `test_*.py` or `*_test.py` (here in `tests/`) and functions `test_*` in them.
-17. **ruff** checks style, unused and undefined names, import order, outdated syntax, likely bugs, and
-    the formatting of the code.
-18. **Exit codes:** 0 for success, 1 for invalid data or a file error, 2 for invalid arguments.
-19. **Tests, analysis and packaging in CI** check different things: behaviour, code quality, and that
-    the checked code can be installed on every system.
-20. **REPORT must declare** the CSV header and example, the reference date, the full report, the exit
-    codes, the test results and the CI results.
+1. **A class** is the description (fields, methods); **an instance** is one object made from it with
+   its own values.
+2. **`__init__`** fills a new object with its first values; **`self`** is that object.
+3. **`@property`** reads like a field but runs code: it checks or computes a value.
+4. **A setter writes to `_visits`**, not to `visits`: writing to the property would call the setter
+   again without end.
+5. **`@dataclass`** generates `__init__`, `__repr__` and `__eq__` from the listed fields.
+6. **`frozen=True`** forbids changing fields after creation and makes the object hashable.
+7. **`__str__`** is short text for people (`print`); **`__repr__`** is exact text for developers, close
+   to the code that creates the object.
+8. **`__eq__` with another type** returns `NotImplemented`, so Python can try the other object and
+   finally gives `False`.
+9. **`key`** is better when there are several useful orders or no natural one, as for memberships;
+   `__lt__` fixes one order for the class.
+10. **`super()`** calls the method of the parent class, for example its `__init__`, without naming it.
+11. **MRO** is the order in which Python looks for a method in the class and its parents; with several
+    parents it decides which method runs.
+12. **Duck typing:** the code uses what an object can do, not what class it is.
+13. **`Protocol`** writes this contract down for type checkers without making classes inherit it.
+14. **No subtype checks in analysis:** a new subtype would need changes in every function; with a
+    shared method it only needs its own class.
+15. **Dictionary → object** happens in the loader, the border between the file and the program.
+16. **No CLI on import:** importing a module in a test or another module must not read files or exit.
+17. **Tested properties:** setters with correct, zero, boundary and wrong values, read-only fields,
+    `str`, `repr`, equality, hash, subtypes, the dataclass and the shared function.
+18. **pytest** checks behaviour, **ruff** checks code quality and format, **wheel** checks that the
+    package can be installed.
+19. **Edge cases:** empty input, header only, zero visits, the end day, the 30-day boundary, equal
+    values, wrong types, broken CSV rows.
+20. **REPORT declares** the classes, fields, subtypes and the shared operation, the old and the new
+    report, the test results, CI and the contribution of AI.
 
-## 16. Conclusions
+## 13. Conclusions
 
-The package reads and checks the CSV of variant 20 with `csv.DictReader`, keeps the records as
-dictionaries, computes the selection, the aggregation, the unique customers, the average and the
-leader with comprehensions, and writes a stable UTF-8 report through a CLI with clear exit codes.
-49 tests, ruff and the wheel build pass on Ubuntu, Windows and macOS.
-
-Lab 7 rebuilds the records as objects (`Membership` with properties and two subtypes). The loader,
-the report format and the tests of this lab stay the base: the new object model must give the same
-report.
+The memberships of variant 20 are now objects: `Membership` guards its values with properties, two
+subtypes compute `visit_cost()` with their own tariffs, `ExpirySummary` keeps the result of the
+expiry analysis and cannot be changed. The functions work through the shared protocol without
+checking the class. The Lab 6 report is reproduced byte for byte and extended with 5 lines;
+97 tests, ruff and the wheel pass on Ubuntu, Windows and macOS. The object model is the base for
+the next lab: its own storage of objects and context managers.

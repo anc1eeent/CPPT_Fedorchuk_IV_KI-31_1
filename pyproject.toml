@@ -38,5 +38,8 @@ extend-exclude = [".venv-*", "build", "dist"]
 # UP: modern Python syntax, B: likely bugs, SIM: simpler equivalent code.
 select = ["E", "W", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["gym_membership"]
+
 [tool.ruff.format]
 quote-style = "double"
